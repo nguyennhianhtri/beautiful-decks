@@ -4,6 +4,7 @@
 const puppeteer = require('puppeteer-core');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 const { launchOptions } = require('./lib/browser');
 
 const args = process.argv.slice(2);
@@ -40,7 +41,7 @@ for (const name of fs.readdirSync(outDir)) {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: W, height: H, deviceScaleFactor: dsf });
-    await page.goto(`file://${path.resolve(input)}`, { waitUntil: 'networkidle0' });
+    await page.goto(pathToFileURL(path.resolve(input)).href, { waitUntil: 'networkidle0' });
     await page.evaluateHandle('document.fonts.ready');
 
     const gallery = await page.evaluate(() => document.body.classList.contains('gallery'));

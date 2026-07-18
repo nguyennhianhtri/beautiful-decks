@@ -94,8 +94,8 @@ body.wide .st-assist .sa-t b{color:var(--blue-shade-30);font-weight:700;}
 body.wide .emo-pt{fill:#fff;stroke:var(--accent);stroke-width:3;}
 body.wide .emo-pt.low{stroke:#C94F4F;}
 body.wide .emo-pt.high{stroke:var(--ms-green);}
-body.wide .emo-line{fill:none;stroke:url(#emoGrad);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;}
-body.wide .emo-area{fill:url(#emoFill);opacity:.5;}
+body.wide .emo-line{fill:none;stroke:var(--accent);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;}
+body.wide .emo-area{fill:var(--accent);opacity:.5;}
 
 /* =====================================================================
    HORIZONTAL SWIMLANES — actors as rows, time as columns, the full width
