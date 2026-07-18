@@ -17,8 +17,11 @@ const escapeText = (value) => String(value == null ? '' : value)
 const escapeAttr = escapeText;
 function safeUrl(value){
   const url = String(value == null ? '' : value).trim();
-  if(/^(?:https?:|mailto:|#|\.\.?\/)/i.test(url)) return escapeAttr(url);
-  return '#';
+  if(!url || /[\u0000-\u001f\u007f\\]/.test(url)) return '#';
+  const scheme = url.match(/^([a-z][a-z0-9+.-]*):/i);
+  if(scheme) return /^(?:https?|mailto)$/i.test(scheme[1]) ? escapeAttr(url) : '#';
+  if(url.startsWith('//')) return '#';
+  return escapeAttr(url);
 }
 const SAFE_ASSET_SLUG = /^[a-z0-9][a-z0-9_-]*$/i;
 const _iconCache = new Map();
@@ -130,11 +133,15 @@ function customerLogo(key){
 let _brandbarSeq = 0;
 function _nsLogoIds(svg){
   const tag = `b${(_brandbarSeq++).toString(36)}-`;
-  const ids = new Set((svg.match(/id="([^"]+)"/g)||[]).map(m=>m.slice(4,-1)));
+  const ids = new Set([...svg.matchAll(/\bid\s*=\s*(['"])([^'"]+)\1/g)].map(match => match[2]));
+  const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   for(const id of [...ids].sort((a,b)=>b.length-a.length)){
-    svg = svg.split(`id="${id}"`).join(`id="${tag}${id}"`)
-             .split(`url(#${id})`).join(`url(#${tag}${id})`)
-             .split(`href="#${id}"`).join(`href="#${tag}${id}"`);
+    const escaped = escapeRegex(id);
+    svg = svg.replace(new RegExp(`(\\bid\\s*=\\s*)(['"])${escaped}\\2`, 'g'),
+      (_, prefix, quote) => `${prefix}${quote}${tag}${id}${quote}`)
+      .replace(new RegExp(`url\\(\\s*#${escaped}\\s*\\)`, 'g'), `url(#${tag}${id})`)
+      .replace(new RegExp(`((?:xlink:)?href\\s*=\\s*)(['"])#${escaped}\\2`, 'g'),
+        (_, prefix, quote) => `${prefix}${quote}#${tag}${id}${quote}`);
   }
   return svg;
 }
@@ -582,6 +589,11 @@ const STANDARD_REQUIRED_ARRAYS = {
   compare: ['rows'], usecases: ['rows'], spotlight: ['stats'], closing: ['steps'],
   archgrid: ['zones'],
 };
+const STANDARD_OBJECT_ARRAY = {
+  agenda: 'items', cards3: 'cards', quad: 'cards', features: 'rows', metrics: 'stats',
+  phases: 'steps', timeline: 'items', compare: 'rows', usecases: 'rows', spotlight: 'stats',
+  closing: 'steps', archgrid: 'zones',
+};
 function validateDeck(deck){
   if(!deck || typeof deck !== 'object') throw new TypeError('deck spec must export an object');
   if(!Array.isArray(deck.slides) || deck.slides.length===0) throw new TypeError('deck.slides must be a non-empty array');
@@ -593,6 +605,28 @@ function validateDeck(deck){
       if(!Array.isArray(slide[field]) || slide[field].length === 0){
         throw new TypeError(`${label}.${field} must be a non-empty array`);
       }
+    }
+    const objectField = STANDARD_OBJECT_ARRAY[slide.type];
+    if(objectField) slide[objectField].forEach((item, itemIndex) => {
+      if(!item || typeof item !== 'object') throw new TypeError(`${label}.${objectField}[${itemIndex}] must be an object`);
+    });
+    if(['placeholder', 'product'].includes(slide.type) && (!slide.src || typeof slide.src !== 'object' || Array.isArray(slide.src))){
+      throw new TypeError(`${label}.src must be an object`);
+    }
+    if(slide.type === 'webexhibit' && slide.src != null && (typeof slide.src !== 'object' || Array.isArray(slide.src))){
+      throw new TypeError(`${label}.src must be an object`);
+    }
+    if(slide.type === 'cover' && slide.meta != null){
+      if(!Array.isArray(slide.meta)) throw new TypeError(`${label}.meta must be an array`);
+      slide.meta.forEach((item, itemIndex) => {
+        if(!item || typeof item !== 'object') throw new TypeError(`${label}.meta[${itemIndex}] must be an object`);
+      });
+    }
+    if(slide.type === 'placeholder' && slide.products != null){
+      if(!Array.isArray(slide.products)) throw new TypeError(`${label}.products must be an array`);
+      slide.products.forEach((product, productIndex) => {
+        if(!product || typeof product !== 'object') throw new TypeError(`${label}.products[${productIndex}] must be an object`);
+      });
     }
     const classToken = (value, field) => {
       if(value != null && value !== '' && (typeof value !== 'string' || !SAFE_ASSET_SLUG.test(value))){
@@ -608,6 +642,9 @@ function validateDeck(deck){
       if(!zone || typeof zone !== 'object') throw new TypeError(`${label}.zones[${zoneIndex}] must be an object`);
       classToken(zone.tone, `${label}.zones[${zoneIndex}].tone`);
       if(!Array.isArray(zone.items) || zone.items.length === 0) throw new TypeError(`${label}.zones[${zoneIndex}].items must be a non-empty array`);
+      zone.items.forEach((item, itemIndex) => {
+        if(!item || typeof item !== 'object') throw new TypeError(`${label}.zones[${zoneIndex}].items[${itemIndex}] must be an object`);
+      });
     });
     if(slide.type === 'phases') slide.steps.forEach((step, stepIndex) => classToken(step && step.state, `${label}.steps[${stepIndex}].state`));
     if(slide.type === 'big') classToken(slide.tone, `${label}.tone`);

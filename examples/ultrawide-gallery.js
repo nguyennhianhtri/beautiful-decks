@@ -566,7 +566,7 @@ module.exports = {
         {
           "name": "Synthetic product",
           "role": "Synthetic item",
-          "initials": "Synthetic item",
+          "initials": "SI",
           "sections": [
             {
               "h": "Synthetic heading",
@@ -590,7 +590,7 @@ module.exports = {
         {
           "name": "Synthetic product",
           "role": "Synthetic item",
-          "initials": "Synthetic item",
+          "initials": "SI",
           "sections": [
             {
               "h": "Synthetic heading",
@@ -614,7 +614,7 @@ module.exports = {
         {
           "name": "Synthetic product",
           "role": "Synthetic item",
-          "initials": "Synthetic item",
+          "initials": "SI",
           "sections": [
             {
               "h": "Synthetic heading",
@@ -813,7 +813,7 @@ module.exports = {
       "title": "Synthetic screenshot gallery",
       "shots": [
         {
-          "img": "../engine/assets/img/building.svg",
+          "img": "building",
           "cap": "Synthetic view one",
           "chips": [
             {
@@ -824,7 +824,7 @@ module.exports = {
           ]
         },
         {
-          "img": "../engine/assets/img/analytics.svg",
+          "img": "analytics",
           "cap": "Synthetic view two",
           "chips": [
             {
@@ -835,7 +835,7 @@ module.exports = {
           ]
         },
         {
-          "img": "../engine/assets/img/meeting.svg",
+          "img": "meeting",
           "cap": "Synthetic view three",
           "chips": [
             {

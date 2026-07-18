@@ -17,11 +17,11 @@ module.exports = {
 };
 ```
 
-Builders validate template names, required arrays, CSS colors, key ultrawide cardinalities, finite chart points, sentiment ranges, and swimlane grid bounds before rendering. They do not mutate the imported spec.
+Builders validate template names, required/nested arrays, CSS colors, ribbon row counts, key ultrawide cardinalities, finite chart points, sentiment ranges, and grid bounds before rendering. They do not mutate the imported spec.
 
 Ultrawide currently supports the dark theme only. `theme: 'light'` fails fast instead of producing unreadable white-on-white v2 components.
 
-Asset slugs accept letters, digits, `_`, and `-`; explicit image extensions are preserved. Source links allow `http:`, `https:`, `mailto:`, fragments, and relative paths. Deck specs are executable JavaScript and must still be trusted.
+Asset slugs accept letters, digits, `_`, and `-`; explicit image extensions are preserved. Source links allow `http:`, `https:`, `mailto:`, fragments, root-relative paths, and ordinary relative paths; protocol-relative URLs and unsafe schemes are rejected. Ultrawide colors accept `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`, `var(--token)`, `transparent`, or `currentColor`. Deck specs are executable JavaScript and must still be trusted.
 
 ## Standard 16:9 templates
 
@@ -62,11 +62,13 @@ Standard text fields accept trusted inline HTML for emphasis. Do not insert untr
 | `whorizon` | `title` | `eyebrow`, `attribution` |
 | `wunfold` | `title`, `acts[{n,t,b}]` | act `foot`, `dark`; `kicker` |
 | `wjourney` | `title`, `stations[]` | `kicker`, `subtitle`, station emotion/assist fields |
-| `wribbon` | `title`, `kpis[{l,n}]` | KPI `spark[]`, `delta`, `tone`; `kicker` |
+| `wribbon` | `title`, `kpis[{l,n}]` | KPI `spark[]`, `delta`, `tone`; positive-integer `perRow`; `kicker` |
 | `wtimeline` | template-specific timeline fields | inspect implementation before use |
 | `wstatement` | `title` | `eyebrow`, `subtitle` |
 
 Advanced ultrawide types: `wbigtri`, `wbrandcover`, `wchain`, `wconstel`, `wday`, `wdolly`, `wfilmstrip`, `wforces`, `wgutpunch`, `whub`, `wiris`, `wleak`, `wpersona`, `wpitchcanvas`, `wramp`, `wriver`, `wroad`, `wsection`, `wshots`, `wshutter`, `wstair`, `wswim`, `wtript`, `wtypewriter`, `wzipper`.
+
+`wforces` requires exactly two forces with non-empty `items[]`. `wshots[].img` accepts either a bundled image key or an explicit path/URL; bundled keys remain portable across output directories.
 
 Ultrawide fields are escaped as plain text. Use the panorama for sequence and spatial relationships rather than HTML formatting.
 

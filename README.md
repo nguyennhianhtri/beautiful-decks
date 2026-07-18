@@ -85,7 +85,7 @@ Deck specs are executable JavaScript. Only run specs you trust.
 
 ```bash
 # Deterministic geometry, clipping, missing-image, and runtime checks
-npx beautiful-decks qa dist/my-deck.html --out dist/qa-my-deck
+npx beautiful-decks qa dist/my-deck.html --out dist/qa-my-deck --strict
 
 # Per-slide PNGs; add --pdf to export both
 npx beautiful-decks render dist/my-deck.html dist/render my --pdf dist/my-deck.pdf
@@ -101,7 +101,7 @@ npx beautiful-decks portable dist/my-deck.html dist/my-deck-portable.html --stri
 | Command | Purpose |
 |---|---|
 | `beautiful-decks build <spec> [out]` | Build standard or ultrawide HTML from `spec.format` |
-| `beautiful-decks qa <html>` | Select the correct geometry linter automatically |
+| `beautiful-decks qa <html> --strict` | Select the correct geometry linter and fail on errors or warnings |
 | `beautiful-decks render <html> <dir>` | Render all slides to PNG |
 | `beautiful-decks pdf <html> <pdf>` | Export a same-count PDF |
 | `beautiful-decks portable <html> <out>` | Inline all local dependencies |
@@ -135,7 +135,7 @@ npm test
 npm run verify
 ```
 
-The regression suite covers blank non-motion decks, field-specific validation, traversal-safe assets, non-mutating deterministic builds, unique SVG IDs, encoded file paths, safe URL/CSS handling, interactive-control navigation, overview accessibility, same-slide step reset, active-gated PNG/PDF export, broken-image detection, ultrawide export, strict portability, and exact 57-template fixture coverage. CI also runs geometry/runtime QA over every template.
+The regression suite covers blank non-motion decks, field-specific validation, traversal-safe assets, non-mutating deterministic builds, single/double-quoted SVG IDs, encoded file paths, safe relative URLs/CSS tokens, ribbon loop bounds, nested geometry, strict warning-fatal QA, interactive-control navigation, overview accessibility, same-slide step reset, active-gated PNG/PDF export, broken-image detection, ultrawide export, strict portability, and exact 57-template fixture coverage. CI also runs geometry/runtime QA over every template.
 
 ## Assets and licenses
 

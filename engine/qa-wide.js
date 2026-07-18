@@ -12,12 +12,13 @@ const { pathToFileURL } = require('url');
 const { launchOptions } = require('./lib/browser');
 const args = process.argv.slice(2);
 const input = args[0];
-if (!input) { console.error('usage: node qa-wide.js <input.html> [--out dir] [--prefix p] [--settle ms] [--dsf n]'); process.exit(2); }
+if (!input) { console.error('usage: node qa-wide.js <input.html> [--out dir] [--prefix p] [--settle ms] [--dsf n] [--strict]'); process.exit(2); }
 const getFlag = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? args[i + 1] : d; };
 const SETTLE = parseInt(getFlag('settle', '3200'), 10);
 const PREFIX = getFlag('prefix', 'w');
 const DSF = parseFloat(getFlag('dsf', '2'));
 const OUT = getFlag('out', path.join(path.dirname(path.resolve(input)), 'qa-render'));
+const STRICT = args.includes('--strict') || args.includes('--fail-on-warn');
 const W = 3840, H = 720;
 const EDGE_TOL = 1.5, OVERLAP_AREA = 240, FONT_FLOOR = 11;
 fs.mkdirSync(OUT, { recursive: true });
@@ -160,5 +161,5 @@ function measure(W, H, EDGE_TOL, OVERLAP_AREA, FONT_FLOOR, sel) {
   runtimeErrors.forEach(message => console.log(`     [ERROR] RUNTIME — ${message}`));
   fs.writeFileSync(path.join(OUT, 'qa-report.json'), JSON.stringify({ input, count, errors, warns, runtimeErrors, report }, null, 2));
   console.log(`\n${errors} errors, ${warns} warnings across ${count} slides → ${path.join(OUT,'qa-report.json')}`);
-  process.exit(errors > 0 ? 1 : 0);
+  process.exit(errors > 0 || (STRICT && warns > 0) ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });

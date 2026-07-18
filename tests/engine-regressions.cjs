@@ -122,20 +122,27 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
       () => validateDeck({ slides: [{ type: 'archgrid', title: 'Unsafe zone', zones: [{ tone: '\"><img src=x onerror=alert(1)>', name: 'x', items: [{ label: 'x', glyph: 'layer' }] }] }] }),
       /slide 1\.zones\[0\]\.tone.*class token/i,
     );
+    for (const type of ['placeholder', 'product']) {
+      assert.throws(
+        () => validateDeck({ slides: [{ type, title: 'Missing source', name: 'x' }] }),
+        /slide 1\.src.*object/i,
+      );
+    }
   });
 
   await test('repeated builds are byte-deterministic and namespace repeated inline SVG ids', () => {
     const { buildDeck } = require(path.join(ROOT, 'build.js'));
     const deck = {
       title: 'Deterministic',
-      customer: { logoSvg: '<svg viewBox="0 0 10 10"><defs><linearGradient id="g"><stop/></linearGradient></defs><rect id="r" fill="url(#g)"/></svg>' },
+      customer: { logoSvg: `<svg viewBox="0 0 10 10"><defs><linearGradient id='g'><stop/></linearGradient></defs><rect id="r" fill='url(#g)' href='#g'/></svg>` },
       slides: [{ type: 'statement', title: 'One' }, { type: 'statement', title: 'Two' }],
     };
     const first = buildDeck(deck);
     const second = buildDeck(deck);
     assert.strictEqual(first, second);
-    const ids = [...first.matchAll(/\sid="([^"]+)"/g)].map(match => match[1]);
+    const ids = [...first.matchAll(/\sid=(['"])([^'"]+)\1/g)].map(match => match[2]);
     assert.strictEqual(ids.length, new Set(ids).size);
+    assert.doesNotMatch(first, /(?:url\(#g\)|href=['"]#g['"])/);
   });
 
   await test('asset resolution is traversal-safe, extension-aware, scoped, and non-mutating', () => {
@@ -149,6 +156,11 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
       assert.strictEqual(B.IMG('figure.png'), '../assets/img/figure.png');
       assert.strictEqual(B.IMG('bad" onerror="alert(1)'), '');
     } finally { console.warn = warn; }
+    assert.strictEqual(B.safeUrl('docs/source.html'), 'docs/source.html');
+    assert.strictEqual(B.safeUrl('/docs/source.html'), '/docs/source.html');
+    assert.strictEqual(B.safeUrl('?view=1'), '?view=1');
+    assert.strictEqual(B.safeUrl('javascript:alert(1)'), '#');
+    assert.strictEqual(B.safeUrl('//example.com/path'), '#');
 
     const deck = {
       _assetBase: 'alpha', foot: 'Original footer',
@@ -224,6 +236,43 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
         { n: '1', l: 'x', tone: '\"><img src=x onerror=alert(1)>' }, { n: '2', l: 'y' }, { n: '3', l: 'z' },
       ] }] }),
       /slide 1\.stats\[0\]\.tone.*class token/i,
+    );
+  });
+
+  await test('wide validator rejects unsafe ribbon controls, invalid colors, and malformed nested forces', () => {
+    const { validateWideDeck } = require(path.join(ROOT, 'build-wide.js'));
+    for (const perRow of [-1, 0, 1.5, Infinity, '1)\" onmouseover=\"alert(1)\"']) {
+      assert.throws(
+        () => validateWideDeck({ slides: [{ type: 'wribbon', title: 'Bad perRow', perRow, kpis: [{ l: 'x', n: '1' }] }] }),
+        /slide 1\.perRow.*positive integer/i,
+      );
+    }
+    for (const color of ['#12345', 'notacolor', 'rgb(1,2,3)']) {
+      assert.throws(
+        () => validateWideDeck({ brand: { accent: color }, slides: [{ type: 'wstatement', title: 'Bad color' }] }),
+        /brand\.accent.*CSS color/i,
+      );
+    }
+    for (const color of ['#123', '#1234', '#123456', '#12345678', 'var(--accent)', 'transparent', 'currentColor']) {
+      assert.doesNotThrow(() => validateWideDeck({ brand: { accent: color }, slides: [{ type: 'wstatement', title: 'Valid color' }] }));
+    }
+    for (const forces of [
+      [{ name: 'One', items: ['x'] }],
+      [{ name: 'One' }, { name: 'Two', items: ['y'] }],
+      [{ name: 'One', items: ['x'] }, { name: 'Two', items: ['y'] }, { name: 'Three', items: ['z'] }],
+    ]) {
+      assert.throws(
+        () => validateWideDeck({ slides: [{ type: 'wforces', title: 'Bad forces', forces }] }),
+        /slide 1\.forces.*exactly 2|slide 1\.forces\[\d+\]\.items.*non-empty array/i,
+      );
+    }
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wpersona', title: 'Bad persona', personas: [{ name: 'x', sections: [{ h: 'x' }] }] }] }),
+      /slide 1\.personas\[0\]\.sections\[0\]\.items.*array/i,
+    );
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wriver', title: 'Missing core', left: [{ t: 'x' }], right: [{ t: 'y' }] }] }),
+      /slide 1\.core.*object/i,
     );
   });
 
@@ -306,6 +355,7 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
     run('build-wide.js', [writeSpec('special-wide.js', `module.exports={slides:[{type:'wstatement',title:'Encoded path'}]};`), wide]);
     run('render.js', [standard, path.join(special, 'render standard'), 'slide', '--settle', '0', '--dsf', '0.25']);
     run('qa.js', [standard, '--out', path.join(special, 'qa standard'), '--settle', '0']);
+    run('qa-wide.js', [wide, '--out', path.join(special, 'qa wide'), '--settle', '0', '--dsf', '0.1']);
     run('pdf.js', [standard, path.join(special, 'deck #1%.pdf')]);
     run('render-wide.js', [wide, path.join(special, 'render wide'), 'wide', '--settle', '0', '--dsf', '0.1']);
     assert.ok(fs.existsSync(path.join(special, 'render standard', 'slide-01.png')));
@@ -325,8 +375,21 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
     const wideBuild = run('build-wide.js', [path.join(PROJECT, 'examples', 'ultrawide-gallery.js'), wideOut]);
     assert.strictEqual(standardBuild.stderr, '');
     assert.strictEqual(wideBuild.stderr, '');
-    assert.strictEqual((fs.readFileSync(standardOut, 'utf8').match(/<section class="slide/g) || []).length, 22);
-    assert.strictEqual((fs.readFileSync(wideOut, 'utf8').match(/<section class="slide/g) || []).length, 35);
+    const standardHtml = fs.readFileSync(standardOut, 'utf8');
+    const wideHtml = fs.readFileSync(wideOut, 'utf8');
+    assert.strictEqual((standardHtml.match(/<section class="slide/g) || []).length, 22);
+    assert.strictEqual((wideHtml.match(/<section class="slide/g) || []).length, 35);
+    assert.doesNotMatch(wideHtml, /class="pc-av"[^>]*data-qa-ignore/);
+    const standardQa = path.join(tmp, 'qa-all-standard');
+    const wideQa = path.join(tmp, 'qa-all-wide');
+    run('qa.js', [standardOut, '--out', standardQa, '--settle', '0', '--strict']);
+    run('qa-wide.js', [wideOut, '--out', wideQa, '--settle', '0', '--dsf', '0.1', '--strict']);
+    for (const reportPath of [path.join(standardQa, 'qa-report.json'), path.join(wideQa, 'qa-report.json')]) {
+      const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+      assert.strictEqual(report.errors, 0);
+      assert.strictEqual(report.warns, 0);
+      assert.deepStrictEqual(report.runtimeErrors, []);
+    }
   });
 
   await test('standard renderer exports every active-gated motion slide', () => {
@@ -366,6 +429,25 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
     });
     assert.strictEqual(result.status, 1);
     assert.match(result.stdout, /BROKEN_IMAGE/);
+  });
+
+  await test('strict QA exits nonzero on warning-only standard and ultrawide decks', () => {
+    for (const [script, width, height, extra] of [
+      ['qa.js', 1280, 720, []],
+      ['qa-wide.js', 3840, 720, ['--dsf', '0.1']],
+    ]) {
+      const input = path.join(tmp, `warning-only-${width}.html`);
+      fs.writeFileSync(input, `<!doctype html><style>html,body{margin:0}.slide{width:${width}px;height:${height}px;position:relative;display:block}.a,.b{position:absolute;left:200px;top:200px;width:320px;height:80px;font:24px/1.4 Arial}.b{left:300px}</style><section class="slide"><div class="a">Warning overlap alpha</div><div class="b">Warning overlap beta</div></section>`);
+      const looseOut = path.join(tmp, `qa-loose-${width}`);
+      const strictOut = path.join(tmp, `qa-strict-${width}`);
+      const loose = spawnSync(process.execPath, [path.join(ROOT, script), input, '--out', looseOut, '--settle', '0', ...extra], { cwd: PROJECT, encoding: 'utf8' });
+      const strict = spawnSync(process.execPath, [path.join(ROOT, script), input, '--out', strictOut, '--settle', '0', '--strict', ...extra], { cwd: PROJECT, encoding: 'utf8' });
+      const report = JSON.parse(fs.readFileSync(path.join(strictOut, 'qa-report.json'), 'utf8'));
+      assert.strictEqual(report.errors, 0);
+      assert.ok(report.warns > 0);
+      assert.strictEqual(loose.status, 0);
+      assert.strictEqual(strict.status, 1);
+    }
   });
 
   await test('ultrawide renderer exports every slide and assembles a same-count PDF', () => {
