@@ -2,7 +2,7 @@
 
 Agent-ready HTML presentation engine for **standard 16:9** and **ultrawide 48:9** decks.
 
-- 57 reusable templates: 22 standard + 35 ultrawide
+- 57 reusable templates: 22 standard + 35 ultrawide, each covered by a synthetic CI fixture
 - deterministic geometry QA
 - keyboard/fullscreen/overview presenter runtime
 - optional motion that replays on slide entry and respects reduced-motion
@@ -32,6 +32,8 @@ Open:
 
 - `dist/standard.html`
 - `dist/ultrawide.html`
+- `dist/template-gallery.html` — all 22 standard templates
+- `dist/ultrawide-gallery.html` — all 35 ultrawide templates
 
 Presenter controls: `→` / `Space` next, `←` back, `Home` / `End`, `F` fullscreen, `Esc` overview, `1`–`9` jump.
 
@@ -117,7 +119,7 @@ engine/css/                   design, layout, and motion layers
 engine/js/                    presenter and step runtime
 engine/qa*.js                 deterministic geometry QA
 engine/render*.js             PNG and PDF renderers
-examples/                     safe, complete starter specs
+examples/                     starter specs + complete synthetic template matrices
 llms.txt                      agent execution contract
 docs/TEMPLATES.md             template field reference
 ```
@@ -133,7 +135,7 @@ npm test
 npm run verify
 ```
 
-The regression suite covers blank non-motion decks, unknown templates, repeated SVG IDs, interactive-control navigation, overview accessibility, same-slide step reset, active-gated PNG/PDF export, broken-image detection, ultrawide export, and strict portability.
+The regression suite covers blank non-motion decks, field-specific validation, traversal-safe assets, non-mutating deterministic builds, unique SVG IDs, encoded file paths, safe URL/CSS handling, interactive-control navigation, overview accessibility, same-slide step reset, active-gated PNG/PDF export, broken-image detection, ultrawide export, strict portability, and exact 57-template fixture coverage. CI also runs geometry/runtime QA over every template.
 
 ## Assets and licenses
 

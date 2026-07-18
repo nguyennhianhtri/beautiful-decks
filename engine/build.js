@@ -14,21 +14,44 @@ const ICON_DIR = path.join(ROOT, 'assets/icons');
 const escapeText = (value) => String(value == null ? '' : value)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-const _iconCache = {};
-function icon(name){
-  if(_iconCache[name]) return _iconCache[name];
-  const f = path.join(ICON_DIR, name + '.svg');
-  if(!fs.existsSync(f)){ console.warn('  ⚠ missing icon:', name); return ''; }
-  const svg = fs.readFileSync(f,'utf8').replace(/\n/g,'').trim();
-  _iconCache[name] = svg; return svg;
+const escapeAttr = escapeText;
+function safeUrl(value){
+  const url = String(value == null ? '' : value).trim();
+  if(/^(?:https?:|mailto:|#|\.\.?\/)/i.test(url)) return escapeAttr(url);
+  return '#';
 }
-// Asset base for images — set per-build from the output path (see main). Defaults to '..'.
+const SAFE_ASSET_SLUG = /^[a-z0-9][a-z0-9_-]*$/i;
+const _iconCache = new Map();
+function icon(name){
+  const slug = String(name == null ? '' : name);
+  if(!SAFE_ASSET_SLUG.test(slug)){ console.warn('  ⚠ invalid icon slug:', slug); return ''; }
+  if(_iconCache.has(slug)) return _iconCache.get(slug);
+  const f = path.join(ICON_DIR, slug + '.svg');
+  if(!fs.existsSync(f)){ console.warn('  ⚠ missing icon:', slug); return ''; }
+  const svg = fs.readFileSync(f,'utf8').replace(/\n/g,'').trim();
+  _iconCache.set(slug, svg); return svg;
+}
+// Asset base for images — scoped per build. Defaults to '..' for direct template calls.
 let ASSET_BASE = '..';
-const IMG = (name) => `${ASSET_BASE}/assets/img/${name}.svg`;
+function resolveImageRef(name){
+  const value = String(name == null ? '' : name).trim();
+  if(!value) return '';
+  if(/^(?:data:|https?:|file:|\/|\.\.?\/)/i.test(value)) return value;
+  const file = /\.[a-z0-9]{1,8}$/i.test(value) ? value : `${value}.svg`;
+  if(!/^[a-z0-9][a-z0-9_.-]*$/i.test(file)){ console.warn('  ⚠ invalid image reference:', value); return ''; }
+  return `${ASSET_BASE}/assets/img/${file}`;
+}
+const IMG = (name) => escapeAttr(resolveImageRef(name));
+function withAssetBase(base, fn){
+  const previous = ASSET_BASE;
+  ASSET_BASE = String(base || '.').replace(/\/$/, '');
+  try { return fn(); } finally { ASSET_BASE = previous; }
+}
 
 // Optional product/brand icon. Public core falls back to a neutral product glyph.
 function picon(name){
-  return fs.existsSync(path.join(ICON_DIR, `${name}.svg`)) ? icon(name) : icon('product');
+  const slug = String(name == null ? '' : name);
+  return SAFE_ASSET_SLUG.test(slug) && fs.existsSync(path.join(ICON_DIR, `${slug}.svg`)) ? icon(slug) : icon('product');
 }
 
 // ---- REAL Microsoft/Azure product icons (1200+ official logos) --------------
@@ -78,16 +101,18 @@ function logo(opts={}){
 // marks read on a dark slide. NEVER fabricate a logo; register real ones (with
 // source + license) in assets/customers/registry.json.
 const CUST_DIR = path.join(ROOT, 'assets/customers');
-const _custCache = {};
+const _custCache = new Map();
 function customerLogo(key){
-  if(!key) return '';
-  if(_custCache[key]!==undefined) return _custCache[key];
-  const candidates = [ `${key}.inline.svg`, `${key}.svg` ];   // full-color only
+  const slug = String(key == null ? '' : key);
+  if(!slug) return '';
+  if(!SAFE_ASSET_SLUG.test(slug)){ console.warn('  ⚠ invalid customer-logo slug:', slug); return ''; }
+  if(_custCache.has(slug)) return _custCache.get(slug);
+  const candidates = [ `${slug}.inline.svg`, `${slug}.svg` ];   // full-color only
   for(const c of candidates){ const f = path.join(CUST_DIR, c);
     if(fs.existsSync(f)){ const svg = fs.readFileSync(f,'utf8').replace(/<\?xml[^>]*\?>/,'').replace(/<!--[\s\S]*?-->/g,'').replace(/\n/g,'').trim();
-      _custCache[key] = svg; return svg; } }
-  console.warn('  ⚠ missing customer logo:', key, '(register it in assets/customers/)');
-  _custCache[key] = ''; return '';
+      _custCache.set(slug, svg); return svg; } }
+  console.warn('  ⚠ missing customer logo:', slug, '(register it in assets/customers/)');
+  _custCache.set(slug, ''); return '';
 }
 
 // The per-slide brandbar (top-right). DEFAULT = Microsoft logo ONLY (no title text).
@@ -338,7 +363,7 @@ T.compare = (s)=>`
       `<div class="delta-row">`+
         `<div class="d-dim">${r.dim?`<span class="d-dim-ico">${r.icon?icon(r.icon):''}</span>`:''}${r.dim||''}</div>`+
         `<div class="d-from">${r.from}</div>`+
-        `<div class="d-arrow">${icon('p_agent')?'':''}→</div>`+
+        `<div class="d-arrow">→</div>`+
         `<div class="d-to">${r.to}</div>`+
       `</div>`).join('')}</div>
     ${s.insight?`<div class="insight mt-auto" style="max-width:74ch;"><span class="i-ico">→</span><div>${s.insight}</div></div>`:''}
@@ -425,7 +450,7 @@ T.placeholder = (s)=>`
         <span class="ph-src-ico">${icon('image_add')}</span>
         <div class="ph-src-text">
           <div class="ph-src-label">Copy from</div>
-          <a class="ph-src-link" href="${s.src.url}">${s.src.deck}</a>
+          <a class="ph-src-link" href="${safeUrl(s.src.url)}">${escapeText(s.src.deck)}</a>
           ${s.src.note?`<div class="ph-src-note">${s.src.note}</div>`:''}
         </div>
       </div>
@@ -450,8 +475,8 @@ T.placeholder = (s)=>`
 T.webexhibit = (s)=>{
   const dark = s.dark!==false;
   const plate = s.plate||'white';
-  const fit = s.fit||'contain';
-  const imgsrc = /^(data:|https?:|\.|\/)/.test(s.img) ? s.img : IMG(s.img);
+  const fit = s.fit==='cover' ? 'cover' : 'contain';
+  const imgsrc = /^(data:|https?:|file:|\.|\/)/.test(s.img) ? escapeAttr(s.img) : IMG(s.img);
   return `
 <section class="slide exhibit${dark?' dark':''}">
   ${header(s.kicker||'',dark)}
@@ -459,12 +484,12 @@ T.webexhibit = (s)=>{
     ${s.title?`<h2 class="title"${dark?' style="color:var(--text-on-dark);"':''}>${s.title}</h2>`:''}
     <div class="xb-stage">
       <div class="xb-plate ${plate==='white'?'on':'off'}">
-        <img src="${imgsrc}" alt="${(s.alt||s.title||'sourced exhibit').replace(/"/g,'&quot;')}" style="object-fit:${fit};">
+        <img src="${imgsrc}" alt="${escapeAttr(s.alt||s.title||'sourced exhibit')}" style="object-fit:${fit};">
       </div>
     </div>
     ${(s.caption||s.src)?`<div class="xb-cap">
       ${s.caption?`<span class="xb-cap-t">${s.caption}</span>`:''}
-      ${s.src?`<a class="xb-src" href="${s.src.url}" target="_blank" rel="noopener">${s.src.label||'Source ↗'}</a>`:''}
+      ${s.src?`<a class="xb-src" href="${safeUrl(s.src.url)}" target="_blank" rel="noopener">${escapeText(s.src.label||'Source ↗')}</a>`:''}
     </div>`:''}
   </div>
   ${footer(s.foot,s.page,dark)}
@@ -475,7 +500,7 @@ T.big = (s)=>`
   ${s.img?`<div class="duotone soft"><img src="${IMG(s.img)}" alt=""></div>`:'<div class="motif-grid"></div>'}
   ${s.kicker?`<div class="s-header">${logo({dark:true})}<div class="eyebrow on-dark" style="margin:0;">${s.kicker}</div></div>`:''}
   <div class="slide-pad center" style="align-items:${s.align==='center'?'center':'flex-start'};text-align:${s.align==='center'?'center':'left'};">
-    <div class="big-figure ${s.tone||''}">${s.figure}</div>
+    <div class="big-figure ${s.tone||''}" data-qa-ignore="overlap">${s.figure}</div>
     ${s.line?`<div class="big-line">${s.line}</div>`:''}
   </div>
   ${footer(s.foot||'Beautiful Decks',s.page,true)}
@@ -516,7 +541,7 @@ T.product = (s)=>`
         <div class="prod-drop">
           <div class="pd-mark">${icon('image_add')}</div>
           <div class="pd-title">Official ${s.name} slide</div>
-          <a class="pd-link" href="${s.src.url}">${s.src.deck} ↗</a>
+          <a class="pd-link" href="${safeUrl(s.src.url)}">${escapeText(s.src.deck)} ↗</a>
           ${s.src.note?`<div class="pd-note">${s.src.note}</div>`:''}
         </div>
       </div>
@@ -551,50 +576,86 @@ T.archgrid = (s)=>`
 </section>`;
 
 // ---- page assembly ---------------------------------------------------------
+const STANDARD_REQUIRED_ARRAYS = {
+  agenda: ['items'], content: ['bullets'], cards3: ['cards'], quad: ['cards'],
+  features: ['rows'], metrics: ['stats'], phases: ['steps'], timeline: ['items'],
+  compare: ['rows'], usecases: ['rows'], spotlight: ['stats'], closing: ['steps'],
+  archgrid: ['zones'],
+};
 function validateDeck(deck){
   if(!deck || typeof deck !== 'object') throw new TypeError('deck spec must export an object');
   if(!Array.isArray(deck.slides) || deck.slides.length===0) throw new TypeError('deck.slides must be a non-empty array');
   deck.slides.forEach((slide,i)=>{
-    if(!slide || typeof slide !== 'object') throw new TypeError(`slide ${i+1} must be an object`);
-    if(!slide.type || !T[slide.type]) throw new Error(`unknown standard slide type "${slide.type || ''}" at slide ${i+1}`);
+    const label = `slide ${i + 1}`;
+    if(!slide || typeof slide !== 'object') throw new TypeError(`${label} must be an object`);
+    if(!slide.type || !T[slide.type]) throw new Error(`unknown standard slide type "${slide.type || ''}" at ${label}`);
+    for(const field of STANDARD_REQUIRED_ARRAYS[slide.type] || []){
+      if(!Array.isArray(slide[field]) || slide[field].length === 0){
+        throw new TypeError(`${label}.${field} must be a non-empty array`);
+      }
+    }
+    const classToken = (value, field) => {
+      if(value != null && value !== '' && (typeof value !== 'string' || !SAFE_ASSET_SLUG.test(value))){
+        throw new TypeError(`${field} must be a safe CSS class token`);
+      }
+    };
+    if(slide.type === 'quad') slide.cards.forEach((card, cardIndex) => {
+      if(!card || typeof card !== 'object') throw new TypeError(`${label}.cards[${cardIndex}] must be an object`);
+      classToken(card.color, `${label}.cards[${cardIndex}].color`);
+      classToken(card.pill && card.pill.cls, `${label}.cards[${cardIndex}].pill.cls`);
+    });
+    if(slide.type === 'archgrid') slide.zones.forEach((zone, zoneIndex) => {
+      if(!zone || typeof zone !== 'object') throw new TypeError(`${label}.zones[${zoneIndex}] must be an object`);
+      classToken(zone.tone, `${label}.zones[${zoneIndex}].tone`);
+      if(!Array.isArray(zone.items) || zone.items.length === 0) throw new TypeError(`${label}.zones[${zoneIndex}].items must be a non-empty array`);
+    });
+    if(slide.type === 'phases') slide.steps.forEach((step, stepIndex) => classToken(step && step.state, `${label}.steps[${stepIndex}].state`));
+    if(slide.type === 'big') classToken(slide.tone, `${label}.tone`);
+    if(slide.type === 'product') {
+      classToken(slide.tone, `${label}.tone`);
+      classToken(slide.status && slide.status.cls, `${label}.status.cls`);
+    }
+    if(slide.type === 'placeholder' && Array.isArray(slide.products)) {
+      slide.products.forEach((product, productIndex) => classToken(product && product.tone, `${label}.products[${productIndex}].tone`));
+    }
   });
 }
 function buildDeck(deck){
   validateDeck(deck);
   resetBuildState();
-  // Co-brand: when deck.customer is set, stamp the brandbar (MS squares · divider ·
-  // customer logo on a white plate) into the top-right of every slide. We inject it
-  // right before each slide's closing </section> so it overlays regardless of template.
-  // Each call to brandbar() re-namespaces the logo's internal IDs (multi-embed safe).
+  const A = String(deck._assetBase || '..').replace(/\/$/,'');
+  const assetHref = escapeAttr(A);
+  const resolvedSlides = deck.slides.map((slide, i) => ({
+    ...slide,
+    page: String(i + 1).padStart(2, '0'),
+    foot: slide.foot === undefined ? deck.foot : slide.foot,
+  }));
+  // Co-brand: when deck.customer is set, stamp an independently namespaced
+  // customer logo into every slide without mutating the caller-owned spec.
   const stampBrandbar = (html)=>{
     if(!deck.customer) return html;
     return html.replace(/<\/section>/g, ()=>`${brandbar(deck)}</section>`);
   };
-  const rendered = deck.slides.map((sp,i)=>{
+  const rendered = withAssetBase(A, () => resolvedSlides.map((sp)=>{
     const fn = T[sp.type];
-    sp.page = String(i+1).padStart(2,'0');
-    if(sp.foot===undefined) sp.foot = deck.foot;
     return stampBrandbar(fn(sp));
-  });
+  }));
   const slides = rendered.join('\n');
   const bodyClasses = [];
   if(deck.gallery) bodyClasses.push('gallery');
   if(deck.theme==='dark') bodyClasses.push('theme-dark');
-  if(deck.customer) bodyClasses.push('cobrand');   // co-brand: brandbar occupies top-right → keep kickers off it
+  if(deck.customer) bodyClasses.push('cobrand');
   const bodyAttr = bodyClasses.length ? ` class="${bodyClasses.join(' ')}"` : '';
   // Every non-gallery build is a presentation. Motion is an optional visual layer,
   // not a prerequisite for navigation or for showing the first slide.
   const present = !deck.gallery;
   const motion = Boolean(deck.motion) && present;
-  // assetBase: relative path from the OUTPUT html back to _system/ (where css/ js/ assets/ live).
-  // Defaults to '..' (deck sits in _system/gallery/ or a sibling one level down). Override per-build.
-  const A = (deck._assetBase || '..').replace(/\/$/,'');
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeText(deck.title||'Deck')}</title>
-<link rel="stylesheet" href="${A}/css/fluent.css">
+<link rel="stylesheet" href="${assetHref}/css/fluent.css">
 ${deck.customer?`<style>${BRANDBAR_CSS}</style>`:''}
-${motion?`<link rel="stylesheet" href="${A}/css/motion.css">`:''}
+${motion?`<link rel="stylesheet" href="${assetHref}/css/motion.css">`:''}
 ${deck.gallery?`<style>body.gallery{padding:40px 0 70px;}
 .g-label{width:1280px;margin:0 auto 10px;color:#9ad0ff;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-family:var(--font);}
 .g-label span{color:#777;font-weight:500;text-transform:none;letter-spacing:0;margin-left:10px;}</style>`:''}
@@ -608,8 +669,8 @@ ${present?`<style>html,body{margin:0;background:#000;height:100%;overflow:hidden
 .ovcell:focus-visible{outline:3px solid var(--ms-blue);outline-offset:2px;}
 .ovcell .nn{position:absolute;top:6px;left:8px;font-size:10px;color:#5a7099;}</style>`:''}
 </head><body${bodyAttr}>
-${deck.gallery ? deck.slides.map((sp,i)=>`<div class="g-label">${escapeText(sp.page)} · ${escapeText(sp.label||sp.type)}${sp.note?` <span>${escapeText(sp.note)}</span>`:''}</div>\n`+rendered[i]).join('\n') : slides}
-${present?`<script src="${A}/js/deck-engine.js"></script>`:''}
+${deck.gallery ? resolvedSlides.map((sp,i)=>`<div class="g-label">${escapeText(sp.page)} · ${escapeText(sp.label||sp.type)}${sp.note?` <span>${escapeText(sp.note)}</span>`:''}</div>\n`+rendered[i]).join('\n') : slides}
+${present?`<script src="${assetHref}/js/deck-engine.js"></script>`:''}
 </body></html>`;
 }
 
@@ -617,26 +678,24 @@ ${present?`<script src="${A}/js/deck-engine.js"></script>`:''}
 function main(){
 const deckPath = process.argv[2], outPath = process.argv[3];
 if(!deckPath||!outPath){ console.error('usage: node build.js <deck.js> <out.html>'); process.exit(1); }
-const deck = require(path.resolve(deckPath));
-// Auto-compute the relative path from the output HTML back to _system/ (this dir),
-// so a deck built into engagements/<name>/ or _system/gallery/ links assets correctly
-// regardless of depth. Override by setting deck._assetBase in the spec.
-if(deck._assetBase === undefined){
+const inputDeck = require(path.resolve(deckPath));
+// Auto-compute the relative path from the output HTML back to engine/ without
+// mutating the caller-owned CommonJS export.
+let assetBase = inputDeck._assetBase;
+if(assetBase === undefined){
   const outDir = path.dirname(path.resolve(outPath));
-  let rel = path.relative(outDir, ROOT).split(path.sep).join('/');
-  deck._assetBase = rel || '.';
+  const rel = path.relative(outDir, ROOT).split(path.sep).join('/');
+  assetBase = rel || '.';
 }
-ASSET_BASE = deck._assetBase;
-// re-pad pages for gallery mode (labels need page set before render)
-deck.slides.forEach((sp,i)=>{ sp.page = String(i+1).padStart(2,'0'); if(sp.foot===undefined) sp.foot=deck.foot; });
+const deck = { ...inputDeck, _assetBase: assetBase };
 const html = buildDeck(deck);
 const resolvedOut = path.resolve(outPath);
 fs.mkdirSync(path.dirname(resolvedOut), { recursive: true });
 fs.writeFileSync(resolvedOut, html);
-console.log(`✓ ${deck.slides.length} slides → ${outPath}  (assets: ${deck._assetBase})`);
+console.log(`✓ ${deck.slides.length} slides → ${outPath}  (assets: ${assetBase})`);
 }
 if(require.main === module) main();
 module.exports = { T, icon, picon, pchip, logo, brandbar, BRANDBAR_CSS, customerLogo,
   eyebrow, header, footer, buildDeck, validateDeck, productIcon, productIconInfo,
-  escapeText, namespaceSvgIds, resetBuildState,
-  setAssetBase: (b)=>{ ASSET_BASE = b; }, IMG };
+  escapeText, escapeAttr, safeUrl, resolveImageRef, namespaceSvgIds, resetBuildState, withAssetBase,
+  setAssetBase: (b)=>{ ASSET_BASE = b; }, getAssetBase: ()=>ASSET_BASE, IMG };

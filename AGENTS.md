@@ -12,4 +12,4 @@ Rules:
 - Add a regression for engine behavior changes.
 - Do not add customer data, absolute home paths, remote dependencies, or unlicensed assets.
 - Keep official product/customer logos optional and unmodified.
-- Run `npm test` and `npm run safety` before committing.
+- Run `npm run verify` before committing; it includes tests, all 57 template QA checks, and the public-safety scan.

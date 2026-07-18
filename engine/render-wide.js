@@ -10,6 +10,7 @@
 const puppeteer = require('puppeteer-core');
 const { PDFDocument } = require('pdf-lib');
 const path = require('path'); const fs = require('fs');
+const { pathToFileURL } = require('url');
 const { launchOptions } = require('./lib/browser');
 const a = process.argv.slice(2);
 const input = a[0], outDir = a[1] || 'render-wide', prefix = (a[2] && !a[2].startsWith('--')) ? a[2] : 'w';
@@ -27,7 +28,7 @@ fs.mkdirSync(outDir, { recursive: true });
   const b = await puppeteer.launch(launchOptions());
   const p = await b.newPage();
   await p.setViewport({ width: W, height: H, deviceScaleFactor: DSF });
-  await p.goto('file://' + path.resolve(input), { waitUntil: 'networkidle0' });
+  await p.goto(pathToFileURL(path.resolve(input)).href, { waitUntil: 'networkidle0' });
   await p.evaluateHandle('document.fonts.ready');
   const gallery = await p.evaluate(() => document.body.classList.contains('gallery'));
   const count = await p.$$eval('.slide', els => els.length);

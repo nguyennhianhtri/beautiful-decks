@@ -20,6 +20,7 @@
 const puppeteer = require('puppeteer-core');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 const { launchOptions } = require('./lib/browser');
 const args = process.argv.slice(2);
 const input = args[0];
@@ -164,7 +165,7 @@ function measure(W, H, EDGE_TOL, OVERLAP_AREA, FONT_FLOOR) {
   page.on('pageerror', error => runtimeErrors.push(`pageerror: ${error.message}`));
   page.on('requestfailed', request => runtimeErrors.push(`requestfailed: ${request.url()} — ${request.failure() && request.failure().errorText}`));
   await page.setViewport({ width: W, height: H, deviceScaleFactor: 2 });
-  await page.goto('file://' + path.resolve(input), { waitUntil: 'networkidle0' });
+  await page.goto(pathToFileURL(path.resolve(input)).href, { waitUntil: 'networkidle0' });
   await page.evaluateHandle('document.fonts.ready');
 
   const count = await page.$$eval('.slide', els => els.length);

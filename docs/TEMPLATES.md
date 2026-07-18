@@ -17,6 +17,12 @@ module.exports = {
 };
 ```
 
+Builders validate template names, required arrays, CSS colors, key ultrawide cardinalities, finite chart points, sentiment ranges, and swimlane grid bounds before rendering. They do not mutate the imported spec.
+
+Ultrawide currently supports the dark theme only. `theme: 'light'` fails fast instead of producing unreadable white-on-white v2 components.
+
+Asset slugs accept letters, digits, `_`, and `-`; explicit image extensions are preserved. Source links allow `http:`, `https:`, `mailto:`, fragments, and relative paths. Deck specs are executable JavaScript and must still be trusted.
+
 ## Standard 16:9 templates
 
 | Type | Required fields | Useful optional fields |

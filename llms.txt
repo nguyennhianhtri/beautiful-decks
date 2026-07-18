@@ -145,6 +145,8 @@ Then enforce:
 6. Inspect every rendered slide or a legible contact sheet for clipping, overlap, broken hierarchy, unreadable text, and incomplete motion end states.
 7. If a screenshot suggests a defect, verify DOM geometry before patching screenshot/OCR artifacts.
 
+When changing the engine itself, `npm run verify` additionally compiles and geometry-checks the synthetic matrices in `examples/template-gallery.js` and `examples/ultrawide-gallery.js`. Their type sets must exactly equal the 22 standard and 35 ultrawide exports.
+
 Do not claim completion from source inspection alone. Completion means the generated artifact was exercised.
 
 ## Useful commands
@@ -193,6 +195,7 @@ Recommended first choices: `wcurtain`, `wcover`, `wjourney`, `wspotlight`, `whor
 - Broken image: use a bundled background key (`building`, `office`, `datacenter`, `meeting`, `globe`, `advisory`, `fintech`, `analytics`, `manila`, `laptop`) or a valid local path in templates that accept direct paths.
 - QA false positive for intentional off-canvas decoration: add a narrow `data-qa-ignore="offcanvas"` only to the decorative element; never disable the rule globally.
 - Motion sampled too early: use default settle times (2400 ms standard, 3200 ms ultrawide) before diagnosing the final state.
+- Ultrawide `theme: 'light'`: unsupported because the panoramic component set is dark-only; omit it or use the default dark theme.
 - Do not bypass QA just to produce an export.
 
 ## Canonical references
@@ -201,6 +204,8 @@ Recommended first choices: `wcurtain`, `wcover`, `wjourney`, `wspotlight`, `whor
 - Template fields: `docs/TEMPLATES.md`
 - Standard starter: `examples/standard.js`
 - Ultrawide starter: `examples/ultrawide.js`
+- Complete standard matrix: `examples/template-gallery.js`
+- Complete ultrawide matrix: `examples/ultrawide-gallery.js`
 - Presenter runtime: `engine/js/deck-engine.js`
 - Regression suite: `tests/engine-regressions.cjs`
 - Asset/license boundaries: `THIRD_PARTY_NOTICES.md`

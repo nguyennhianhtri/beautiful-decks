@@ -3,6 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const { spawnSync } = require('child_process');
 const puppeteer = require('puppeteer-core');
 const { resolveBrowserPath } = require('../engine/lib/browser');
@@ -42,7 +43,7 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
   const browser = await puppeteer.launch({ executablePath: BROWSER, headless: 'new', args: ['--no-sandbox'] });
   const page = await browser.newPage();
   await page.setViewport(viewport);
-  await page.goto(`file://${file}`, { waitUntil: 'networkidle0' });
+  await page.goto(pathToFileURL(file).href, { waitUntil: 'networkidle0' });
   await page.evaluateHandle('document.fonts.ready');
   return { browser, page };
 }
@@ -103,6 +104,26 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
     assert.throws(() => buildDeck({ title: 'Bad', slides: [{ type: 'does-not-exist' }] }), /unknown/i);
   });
 
+  await test('standard validator rejects missing required arrays with a slide field path', () => {
+    const { validateDeck } = require(path.join(ROOT, 'build.js'));
+    assert.throws(
+      () => validateDeck({ slides: [{ type: 'cards3', title: 'Missing cards' }] }),
+      /slide 1.*cards.*non-empty array/i,
+    );
+    assert.throws(
+      () => validateDeck({ slides: [{ type: 'timeline', title: 'Missing items', body: 'x' }] }),
+      /slide 1.*items.*non-empty array/i,
+    );
+    assert.throws(
+      () => validateDeck({ slides: [{ type: 'quad', title: 'Unsafe class', cards: [{ icon: 'sparkle', title: 'x', body: 'x', color: 'blue\" onclick=\"alert(1)' }] }] }),
+      /slide 1\.cards\[0\]\.color.*class token/i,
+    );
+    assert.throws(
+      () => validateDeck({ slides: [{ type: 'archgrid', title: 'Unsafe zone', zones: [{ tone: '\"><img src=x onerror=alert(1)>', name: 'x', items: [{ label: 'x', glyph: 'layer' }] }] }] }),
+      /slide 1\.zones\[0\]\.tone.*class token/i,
+    );
+  });
+
   await test('repeated builds are byte-deterministic and namespace repeated inline SVG ids', () => {
     const { buildDeck } = require(path.join(ROOT, 'build.js'));
     const deck = {
@@ -117,9 +138,93 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
     assert.strictEqual(ids.length, new Set(ids).size);
   });
 
+  await test('asset resolution is traversal-safe, extension-aware, scoped, and non-mutating', () => {
+    const B = require(path.join(ROOT, 'build.js'));
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      assert.strictEqual(B.icon('../img/building'), '');
+      assert.strictEqual(B.customerLogo('../icons/bank'), '');
+      assert.strictEqual(B.IMG('figure.svg'), '../assets/img/figure.svg');
+      assert.strictEqual(B.IMG('figure.png'), '../assets/img/figure.png');
+      assert.strictEqual(B.IMG('bad" onerror="alert(1)'), '');
+    } finally { console.warn = warn; }
+
+    const deck = {
+      _assetBase: 'alpha', foot: 'Original footer',
+      slides: [{ type: 'cover', title: '<em>Trusted emphasis</em>', img: 'building' }],
+    };
+    const before = JSON.stringify(deck);
+    const first = B.buildDeck(deck);
+    const second = B.buildDeck({ _assetBase: 'beta', slides: [{ type: 'cover', title: 'Other', img: 'building' }] });
+    assert.strictEqual(JSON.stringify(deck), before);
+    assert.match(first, /href="alpha\/css\/fluent\.css"/);
+    assert.match(first, /src="alpha\/assets\/img\/building\.svg"/);
+    assert.match(first, /<em>Trusted emphasis<\/em>/);
+    assert.match(second, /src="beta\/assets\/img\/building\.svg"/);
+    assert.doesNotMatch(second, /alpha\/assets/);
+
+    const linked = B.buildDeck({ slides: [{
+      type: 'webexhibit', title: 'Safe link', img: 'data:image/svg+xml,%3Csvg/%3E',
+      src: { url: 'javascript:alert(1)', label: 'Unsafe source' },
+    }] });
+    assert.match(linked, /class="xb-src" href="#"/);
+    assert.doesNotMatch(linked, /href="javascript:/i);
+  });
+
   await test('wide builder fails fast on an unknown template', () => {
     const { buildWideDeck } = require(path.join(ROOT, 'build-wide.js'));
     assert.throws(() => buildWideDeck({ slides: [{ type: 'does-not-exist' }] }), /unknown/i);
+  });
+
+  await test('wide validator rejects invalid geometry, unsafe colors, and unsupported light theme', () => {
+    const { validateWideDeck } = require(path.join(ROOT, 'build-wide.js'));
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wjourney', title: 'Empty', stations: [] }] }),
+      /slide 1.*stations.*non-empty array/i,
+    );
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wunfold', title: 'Two acts', acts: [{}, {}] }] }),
+      /slide 1.*acts.*exactly 3/i,
+    );
+    assert.throws(
+      () => validateWideDeck({ brand: { accent: 'red;}body{display:none' }, slides: [{ type: 'wstatement', title: 'x' }] }),
+      /brand\.accent.*CSS color/i,
+    );
+    assert.throws(
+      () => validateWideDeck({ theme: 'light', slides: [{ type: 'wstatement', title: 'x' }] }),
+      /light.*not supported/i,
+    );
+  });
+
+  await test('wide validator rejects non-finite and out-of-bounds geometry inputs', () => {
+    const { validateWideDeck } = require(path.join(ROOT, 'build-wide.js'));
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wjourney', title: 'Bad emotion', stations: [{ phase: 'x', emo: 101 }] }] }),
+      /slide 1\.stations\[0\]\.emo.*0.*100/i,
+    );
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wribbon', title: 'Bad spark', kpis: [{ l: 'x', n: '1', spark: [1, Infinity] }] }] }),
+      /slide 1\.kpis\[0\]\.spark.*finite/i,
+    );
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wswim', title: 'Bad grid', cols: ['A'], lanes: [{ actor: 'x', steps: [{ col: 2, span: 1, t: 'x' }] }] }] }),
+      /slide 1\.lanes\[0\]\.steps\[0\].*columns/i,
+    );
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wribbon', title: 'Bad color', kpis: [{ l: 'x', n: '1', color: 'red;}body{display:none' }] }] }),
+      /slide 1\.kpis\[0\]\.color.*CSS color/i,
+    );
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wjourney', title: 'Bad class', stations: [{ phase: 'x', tone: 'high\" onclick=\"alert(1)' }] }] }),
+      /slide 1\.stations\[0\]\.tone.*class token/i,
+    );
+    assert.throws(
+      () => validateWideDeck({ slides: [{ type: 'wbigtri', title: 'Bad stat class', stats: [
+        { n: '1', l: 'x', tone: '\"><img src=x onerror=alert(1)>' }, { n: '2', l: 'y' }, { n: '3', l: 'z' },
+      ] }] }),
+      /slide 1\.stats\[0\]\.tone.*class token/i,
+    );
   });
 
   await test('wide builder always loads presenter runtime and escapes plain-text fields', () => {
@@ -133,6 +238,43 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
     assert.ok(!html.includes('NaN'));
     assert.ok(html.includes('A &lt; B'));
     assert.ok(html.includes('<title>Wide &lt;unsafe&gt;</title>'));
+  });
+
+  await test('wide builds are non-mutating, asset-scoped, and free of duplicate journey SVG ids', () => {
+    const { buildWideDeck } = require(path.join(ROOT, 'build-wide.js'));
+    const station = { phase: 'Discover', when: 'Now', doing: 'Inspect', emo: 55 };
+    const deck = {
+      _assetBase: 'wide-alpha', foot: 'Wide footer',
+      slides: [
+        { type: 'wjourney', title: 'Journey one', stations: [station] },
+        { type: 'wjourney', title: 'Journey two', stations: [station] },
+        { type: 'wcover', title: 'Image', img: 'building' },
+      ],
+    };
+    const before = JSON.stringify(deck);
+    const html = buildWideDeck(deck);
+    assert.strictEqual(JSON.stringify(deck), before);
+    assert.match(html, /href="wide-alpha\/css\/wide\.css"/);
+    assert.match(html, /src="wide-alpha\/assets\/img\/building\.svg"/);
+    const emotionIds = [...html.matchAll(/\sid="(emo(?:Grad|Fill)-[^"]+)"/g)].map(match => match[1]);
+    assert.strictEqual(emotionIds.length, 4);
+    assert.strictEqual(emotionIds.length, new Set(emotionIds).size);
+  });
+
+  await test('wide product surfaces fall back to the neutral bundled product glyph', () => {
+    const { buildWideDeck } = require(path.join(ROOT, 'build-wide.js'));
+    const warnings = [];
+    const warn = console.warn;
+    console.warn = (...args) => warnings.push(args.join(' '));
+    let html;
+    try {
+      html = buildWideDeck({ slides: [{
+        type: 'whub', title: 'Fallback', hubIcon: 'p_not_bundled',
+        nodes: [{ icon: 'p_not_bundled', t: 'Node' }],
+      }] });
+    } finally { console.warn = warn; }
+    assert.deepStrictEqual(warnings, []);
+    assert.match(html, /M8 8h8v8H8z/);
   });
 
   await test('step state resets when the presenter replays the current slide', async () => {
@@ -153,6 +295,38 @@ async function browserFor(file, viewport = { width: 1280, height: 720, deviceSca
       });
       assert.deepStrictEqual(state, { before: '2', after: '0' });
     } finally { await browser.close(); }
+  });
+
+  await test('browser tools support encoded local paths', () => {
+    const special = path.join(tmp, 'space # percent% unicode-測試');
+    fs.mkdirSync(special, { recursive: true });
+    const standard = path.join(special, 'deck #1%.html');
+    const wide = path.join(special, 'wide #1%.html');
+    run('build.js', [staticSpec, standard]);
+    run('build-wide.js', [writeSpec('special-wide.js', `module.exports={slides:[{type:'wstatement',title:'Encoded path'}]};`), wide]);
+    run('render.js', [standard, path.join(special, 'render standard'), 'slide', '--settle', '0', '--dsf', '0.25']);
+    run('qa.js', [standard, '--out', path.join(special, 'qa standard'), '--settle', '0']);
+    run('pdf.js', [standard, path.join(special, 'deck #1%.pdf')]);
+    run('render-wide.js', [wide, path.join(special, 'render wide'), 'wide', '--settle', '0', '--dsf', '0.1']);
+    assert.ok(fs.existsSync(path.join(special, 'render standard', 'slide-01.png')));
+    assert.ok(fs.existsSync(path.join(special, 'render wide', 'wide-01.png')));
+  });
+
+  await test('synthetic galleries cover every exported template and build without warnings', () => {
+    const { T } = require(path.join(ROOT, 'build.js'));
+    const { W } = require(path.join(ROOT, 'build-wide.js'));
+    const standardSpec = require(path.join(PROJECT, 'examples', 'template-gallery.js'));
+    const wideSpec = require(path.join(PROJECT, 'examples', 'ultrawide-gallery.js'));
+    assert.deepStrictEqual(standardSpec.slides.map(slide => slide.type).sort(), Object.keys(T).sort());
+    assert.deepStrictEqual(wideSpec.slides.map(slide => slide.type).sort(), Object.keys(W).sort());
+    const standardOut = path.join(tmp, 'all-standard.html');
+    const wideOut = path.join(tmp, 'all-wide.html');
+    const standardBuild = run('build.js', [path.join(PROJECT, 'examples', 'template-gallery.js'), standardOut]);
+    const wideBuild = run('build-wide.js', [path.join(PROJECT, 'examples', 'ultrawide-gallery.js'), wideOut]);
+    assert.strictEqual(standardBuild.stderr, '');
+    assert.strictEqual(wideBuild.stderr, '');
+    assert.strictEqual((fs.readFileSync(standardOut, 'utf8').match(/<section class="slide/g) || []).length, 22);
+    assert.strictEqual((fs.readFileSync(wideOut, 'utf8').match(/<section class="slide/g) || []).length, 35);
   });
 
   await test('standard renderer exports every active-gated motion slide', () => {

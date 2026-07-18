@@ -5,6 +5,7 @@
 const puppeteer = require('puppeteer-core');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 const { launchOptions } = require('./lib/browser');
 
 const input = process.argv[2];
@@ -20,7 +21,7 @@ fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
-    await page.goto(`file://${path.resolve(input)}`, { waitUntil: 'networkidle0' });
+    await page.goto(pathToFileURL(path.resolve(input)).href, { waitUntil: 'networkidle0' });
     await page.evaluateHandle('document.fonts.ready');
     const count = await page.$$eval('.slide', slides => slides.length);
     if (!count) throw new Error('deck contains no .slide elements');

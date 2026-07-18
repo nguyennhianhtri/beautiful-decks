@@ -58,9 +58,12 @@ W.wcover = (s) => `
 // stations across the spine + an EMOTION CURVE plotted above them.
 // MOTION-AWARE: in a motion deck the curve DRAWS itself L→R, stations rise in a
 // staggered wave, and emotion dots pop in after the line passes. Inert (static)
-// when wide-motion.css isn't loaded (gallery / theme:'light' non-motion decks).
+// when wide-motion.css isn't loaded (gallery and non-motion decks).
 W.wjourney = (s) => {
   const st = s.stations, N = st.length;
+  const idSuffix = String(s.page || '0').replace(/[^a-z0-9_-]/gi, '') || '0';
+  const gradId = `emoGrad-${idSuffix}`;
+  const fillId = `emoFill-${idSuffix}`;
   const colW = TRACK_W / N;
   // emotion curve geometry — author SVG at exact px so it aligns 1:1 with stations
   const EH = 150, top = 20, bot = 18, usable = EH - top - bot;
@@ -85,16 +88,16 @@ W.wjourney = (s) => {
       <div class="jr-emo">
         <svg viewBox="0 0 ${TRACK_W} ${EH}" preserveAspectRatio="none">
           <defs>
-            <linearGradient id="emoGrad" x1="0" y1="0" x2="${TRACK_W}" y2="0" gradientUnits="userSpaceOnUse">
+            <linearGradient id="${gradId}" x1="0" y1="0" x2="${TRACK_W}" y2="0" gradientUnits="userSpaceOnUse">
               <stop offset="0" stop-color="#C94F4F"/><stop offset=".5" stop-color="#00A4EF"/><stop offset="1" stop-color="#7FBA00"/>
             </linearGradient>
-            <linearGradient id="emoFill" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="${fillId}" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stop-color="#00A4EF" stop-opacity=".22"/><stop offset="1" stop-color="#00A4EF" stop-opacity="0"/>
             </linearGradient>
           </defs>
           <text class="emo-band" x="2" y="14">Sentiment</text>
-          <path class="emo-area" d="${area}"></path>
-          <path class="emo-line drawpath" pathLength="1" d="${line}"></path>
+          <path class="emo-area" style="fill:url(#${fillId})" d="${area}"></path>
+          <path class="emo-line drawpath" style="stroke:url(#${gradId})" pathLength="1" d="${line}"></path>
           ${dots}
         </svg>
       </div>
@@ -340,7 +343,7 @@ W.wpersona = (s) => `
     <div class="pers" style="grid-template-columns:repeat(${s.personas.length},1fr);">
       ${s.personas.map(p => `
       <div class="pcard">
-        <div class="pc-top"><div class="pc-av">${esc(p.initials || (p.name || '?').slice(0, 1))}</div>
+        <div class="pc-top"><div class="pc-av" data-qa-ignore="overlap">${esc(p.initials || (p.name || '?').slice(0, 1))}</div>
           <div><div class="pc-nm">${esc(p.name)}</div><div class="pc-rl">${esc(p.role)}</div></div></div>
         ${(p.sections || []).map(sec => `
         <div class="pc-sec ${sec.gain ? 'gain' : ''}">
@@ -615,7 +618,7 @@ W.wshots = (s) => {
 // placeholder in assets/icons/ if there's no confident match, so nothing ever renders blank.
 const pIcon = (name, sz = 40) => {
   const real = (typeof productIcon === 'function') ? productIcon(name, { warn: false }) : '';
-  const svg = real || icon(name);   // real logo first, legacy placeholder fallback
+  const svg = real || B.picon(name);   // official logo, bundled brand glyph, or neutral public fallback
   return `<span class="wp-ico" style="--isz:${sz}px;">${svg}</span>`;
 };
 const gIcon = (name, sz = 40, col = 'var(--accent)') => `<span class="wg-ico" style="--isz:${sz}px;--ic:${col};">${icon(name)}</span>`;
@@ -624,7 +627,7 @@ const gIcon = (name, sz = 40, col = 'var(--accent)') => `<span class="wg-ico" st
 //      optional image bleed on the right. The signature open. (council: slide 1)
 W.wbrandcover = (s) => `
 <section class="slide dark wbrandcover">
-  ${s.img ? `<div class="wbc-bleed"><img src="${esc(/^(\.|\/|https?:|data:)/.test(s.img) ? s.img : B.IMG(s.img))}" alt=""></div>` : '<div class="wbc-motif"></div>'}
+  ${s.img ? `<div class="wbc-bleed"><img src="${/^(\.|\/|https?:|data:|file:)/.test(s.img) ? esc(s.img) : B.IMG(s.img)}" alt=""></div>` : '<div class="wbc-motif"></div>'}
   <div class="wbc-horizon"></div>
   <div class="wbc-wrap">
     <div class="eyebrow bar on-dark">${esc(s.eyebrow || 'Beautiful Decks')}</div>
@@ -696,7 +699,7 @@ W.wgutpunch = (s) => {
 <section class="slide dark wgutpunch">
   <div class="gp-field">${dots}</div>
   <div class="gp-stage">
-    ${s.eyebrow ? `<div class="eyebrow bar on-dark" style="justify-content:center;">${esc(s.eyebrow)}</div>` : ''}
+    ${s.eyebrow ? `<div class="eyebrow bar on-dark" data-qa-ignore="overlap" style="justify-content:center;">${esc(s.eyebrow)}</div>` : ''}
     <div class="gp-fig">${fig}</div>
     ${s.line ? `<div class="gp-line">${esc(s.line)}</div>` : ''}
     ${s.quote ? `<div class="gp-quote">${esc(s.quote)}</div>` : ''}
@@ -839,19 +842,126 @@ W.wpitchcanvas = (s) => `
 // ============================================================================
 //  PAGE ASSEMBLY
 // ============================================================================
+const WIDE_REQUIRED_ARRAYS = {
+  wjourney: ['stations'], wswim: ['cols', 'lanes'], wramp: ['steps'],
+  wroad: ['phases', 'rows'], wtript: ['acts'], wribbon: ['kpis'],
+  wchain: ['inputs', 'outputs'], wbigtri: ['stats'], wconstel: ['nodes'],
+  wpersona: ['personas'], wday: ['segments'], wspotlight: ['items'],
+  wunfold: ['acts'], wshots: ['shots'], wtimeline: ['stations'],
+  wstair: ['steps'], wriver: ['left', 'right'], wforces: ['forces'],
+  whub: ['nodes'], wzipper: ['cols', 'top', 'bot'], wpitchcanvas: ['cards'],
+};
+const CSS_COLOR = /^(?:#[0-9a-f]{3,8}|[a-z]{3,20}|(?:rgb|hsl)a?\([0-9%.,+\-\s]+\))$/i;
+const CSS_CLASS_TOKEN = /^[a-z0-9][a-z0-9_-]*$/i;
+function validateCssColor(value, field){
+  if(value == null || value === '') return;
+  if(typeof value !== 'string' || !CSS_COLOR.test(value.trim())){
+    throw new TypeError(`${field} must be a safe CSS color`);
+  }
+}
+function validateClassToken(value, field){
+  if(value == null || value === '') return;
+  if(typeof value !== 'string' || !CSS_CLASS_TOKEN.test(value)) throw new TypeError(`${field} must be a safe CSS class token`);
+}
 function validateWideDeck(deck) {
   if (!deck || typeof deck !== 'object') throw new TypeError('wide deck spec must export an object');
   if (!Array.isArray(deck.slides) || deck.slides.length === 0) throw new TypeError('deck.slides must be a non-empty array');
+  if (deck.theme === 'light') throw new Error('ultrawide light theme is not supported; use the default dark theme');
+  if (deck.brand != null && typeof deck.brand !== 'object') throw new TypeError('deck.brand must be an object');
+  for (const field of ['accent', 'accent2', 'ink']) validateCssColor(deck.brand && deck.brand[field], `deck.brand.${field}`);
   deck.slides.forEach((slide, index) => {
-    if (!slide || typeof slide !== 'object') throw new TypeError(`slide ${index + 1} must be an object`);
-    if (!slide.type || !W[slide.type]) throw new Error(`unknown wide slide type "${slide.type || ''}" at slide ${index + 1}`);
+    const label = `slide ${index + 1}`;
+    if (!slide || typeof slide !== 'object') throw new TypeError(`${label} must be an object`);
+    if (!slide.type || !W[slide.type]) throw new Error(`unknown wide slide type "${slide.type || ''}" at ${label}`);
+    for (const field of WIDE_REQUIRED_ARRAYS[slide.type] || []) {
+      if (!Array.isArray(slide[field]) || slide[field].length === 0) {
+        throw new TypeError(`${label}.${field} must be a non-empty array`);
+      }
+    }
+    if (['wtript', 'wbigtri', 'wunfold'].includes(slide.type) && slide[slide.type === 'wbigtri' ? 'stats' : 'acts'].length !== 3) {
+      const field = slide.type === 'wbigtri' ? 'stats' : 'acts';
+      throw new RangeError(`${label}.${field} must contain exactly 3 items`);
+    }
+    if (slide.type === 'wbigtri') {
+      slide.stats.forEach((stat, statIndex) => {
+        if (!stat || typeof stat !== 'object') throw new TypeError(`${label}.stats[${statIndex}] must be an object`);
+        validateClassToken(stat.tone, `${label}.stats[${statIndex}].tone`);
+      });
+    }
+    if (slide.type === 'wzipper') {
+      const expected = slide.cols.length;
+      for (const field of ['top', 'bot']) if (slide[field].length !== expected) throw new RangeError(`${label}.${field} must match ${label}.cols length`);
+      if (slide.outcome != null && (!Array.isArray(slide.outcome) || slide.outcome.length !== expected)) {
+        throw new RangeError(`${label}.outcome must be an array matching ${label}.cols length`);
+      }
+    }
+    if (slide.type === 'wjourney') {
+      slide.stations.forEach((station, stationIndex) => {
+        if (!station || typeof station !== 'object') throw new TypeError(`${label}.stations[${stationIndex}] must be an object`);
+        validateClassToken(station.tone, `${label}.stations[${stationIndex}].tone`);
+        if (station.emo != null && (!Number.isFinite(station.emo) || station.emo < 0 || station.emo > 100)) {
+          throw new RangeError(`${label}.stations[${stationIndex}].emo must be a finite number from 0 to 100`);
+        }
+      });
+    }
+    if (slide.type === 'wribbon') {
+      slide.kpis.forEach((kpi, kpiIndex) => {
+        if (!kpi || typeof kpi !== 'object') throw new TypeError(`${label}.kpis[${kpiIndex}] must be an object`);
+        validateCssColor(kpi.color, `${label}.kpis[${kpiIndex}].color`);
+        validateClassToken(kpi.dir, `${label}.kpis[${kpiIndex}].dir`);
+        if (kpi.spark != null && (!Array.isArray(kpi.spark) || kpi.spark.some(point => !Number.isFinite(point)))) {
+          throw new TypeError(`${label}.kpis[${kpiIndex}].spark must contain only finite numbers`);
+        }
+      });
+    }
+    if (slide.type === 'wswim') {
+      slide.lanes.forEach((lane, laneIndex) => {
+        if (!lane || typeof lane !== 'object') throw new TypeError(`${label}.lanes[${laneIndex}] must be an object`);
+        validateClassToken(lane.cls, `${label}.lanes[${laneIndex}].cls`);
+        if (lane.steps != null && !Array.isArray(lane.steps)) throw new TypeError(`${label}.lanes[${laneIndex}].steps must be an array`);
+        for (const [stepIndex, step] of (lane.steps || []).entries()) {
+          const col = step && step.col;
+          const span = step && (step.span == null ? 1 : step.span);
+          if (!Number.isInteger(col) || !Number.isInteger(span) || col < 1 || span < 1 || col + span - 1 > slide.cols.length) {
+            throw new RangeError(`${label}.lanes[${laneIndex}].steps[${stepIndex}] must fit within the declared columns`);
+          }
+        }
+      });
+    }
+    if (slide.type === 'wshots') {
+      slide.shots.forEach((shot, shotIndex) => {
+        if (!shot || typeof shot !== 'object') throw new TypeError(`${label}.shots[${shotIndex}] must be an object`);
+        if (shot.chips != null && !Array.isArray(shot.chips)) throw new TypeError(`${label}.shots[${shotIndex}].chips must be an array`);
+        (shot.chips || []).forEach((chip, chipIndex) => validateCssColor(chip && chip.color, `${label}.shots[${shotIndex}].chips[${chipIndex}].color`));
+      });
+    }
+    if (slide.type === 'wroad') {
+      slide.rows.forEach((row, rowIndex) => {
+        if (!row || typeof row !== 'object' || !Array.isArray(row.bars) || row.bars.length === 0) {
+          throw new TypeError(`${label}.rows[${rowIndex}].bars must be a non-empty array`);
+        }
+        row.bars.forEach((bar, barIndex) => {
+          validateClassToken(bar && bar.cls, `${label}.rows[${rowIndex}].bars[${barIndex}].cls`);
+          const col = bar && bar.col;
+          const span = bar && (bar.span == null ? 1 : bar.span);
+          if (!Number.isInteger(col) || !Number.isInteger(span) || col < 1 || span < 1 || col + span - 1 > slide.phases.length) {
+            throw new RangeError(`${label}.rows[${rowIndex}].bars[${barIndex}] must fit within the declared phases`);
+          }
+        });
+      });
+    }
   });
 }
 function buildWideDeck(deck) {
   validateWideDeck(deck);
   B.resetBuildState();
-  const A = (deck._assetBase || '..').replace(/\/$/, '');
-  B.setAssetBase(A);
+  const A = String(deck._assetBase || '..').replace(/\/$/, '');
+  const assetHref = B.escapeAttr(A);
+  const resolvedSlides = deck.slides.map((slide, index) => ({
+    ...slide,
+    page: String(index + 1).padStart(2, '0'),
+    foot: slide.foot === undefined ? deck.foot : slide.foot,
+  }));
   // WIDE CHROME — vertical brand rail (right edge) + centred footer, built once.
   const ms4 = `<span class="wr-ms"><i></i><i></i><i></i><i></i></span>`;
   const cust = deck.customer ? (typeof deck.customer === 'string' ? { key: deck.customer } : deck.customer) : null;
@@ -870,13 +980,14 @@ function buildWideDeck(deck) {
   // whole wide deck re-tints (accents, rules, eyebrows, highlights) to the
   // customer's brand instead of the default Microsoft blue. deck.brand = {
   //   accent:'#FFE600', accent2:'#F5C24B', ink:'#2E2E38' }  (all optional).
-  const bA = deck.brand && deck.brand.accent;
-  const bA2 = (deck.brand && deck.brand.accent2) || bA;
+  const bA = deck.brand && deck.brand.accent && deck.brand.accent.trim();
+  const bA2 = (deck.brand && deck.brand.accent2 && deck.brand.accent2.trim()) || bA;
+  const brandInk = deck.brand && deck.brand.ink && deck.brand.ink.trim();
   const brandCss = deck.brand ? `<style>
 body.wide{
   ${bA ? `--accent:${bA};--blue-primary:${bA};` : ''}
   ${bA2 ? `--accent2:${bA2};` : ''}
-  ${deck.brand.ink ? `--brand-ink:${deck.brand.ink};` : ''}
+  ${brandInk ? `--brand-ink:${brandInk};` : ''}
 }
 ${bA ? `
 /* re-tint every blue-leak surface to the brand accent */
@@ -896,8 +1007,6 @@ body.wide .eyebrow.on-dark{color:${bA};}
 
   const renderSlide = (sp, i) => {
     const fn = W[sp.type];
-    sp.page = String(i + 1).padStart(2, '0');
-    if (sp.foot === undefined) sp.foot = deck.foot;
     let html = fn(sp);
     // centred footer (under the focal middle screen) — single readable unit, not two
     // scraps stranded at the far edges
@@ -909,24 +1018,22 @@ body.wide .eyebrow.on-dark{color:${bA};}
 
   const bodyClasses = ['wide'];
   if (deck.gallery) bodyClasses.push('gallery');
-  // DARK is the DEFAULT for widescreen — big theatre screens make a light field harsh.
-  // Opt out per-deck with theme:'light'.
-  if (deck.theme !== 'light') bodyClasses.push('theme-dark');
+  bodyClasses.push('theme-dark');
   if (motion) bodyClasses.push('motion-on');
   if (deck.seams) bodyClasses.push('seams');
 
-  const slidesHtml = deck.gallery
-    ? deck.slides.map((sp, i) => `<div class="g-label">${String(i + 1).padStart(2, '0')} · ${esc(sp.label || sp.type)}${sp.note ? ` <span>${esc(sp.note)}</span>` : ''}</div>\n${renderSlide(sp, i)}`).join('\n')
-    : deck.slides.map(renderSlide).join('\n');
+  const slidesHtml = B.withAssetBase(A, () => deck.gallery
+    ? resolvedSlides.map((sp, i) => `<div class="g-label">${sp.page} · ${esc(sp.label || sp.type)}${sp.note ? ` <span>${esc(sp.note)}</span>` : ''}</div>\n${renderSlide(sp, i)}`).join('\n')
+    : resolvedSlides.map(renderSlide).join('\n'));
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(deck.title || 'Wide Deck')}</title>
-<link rel="stylesheet" href="${A}/css/fluent.css">
-<link rel="stylesheet" href="${A}/css/wide.css">
-<link rel="stylesheet" href="${A}/css/wide-v2.css">
-${motion ? `<link rel="stylesheet" href="${A}/css/motion.css">
-<link rel="stylesheet" href="${A}/css/wide-motion.css">` : ''}
+<link rel="stylesheet" href="${assetHref}/css/fluent.css">
+<link rel="stylesheet" href="${assetHref}/css/wide.css">
+<link rel="stylesheet" href="${assetHref}/css/wide-v2.css">
+${motion ? `<link rel="stylesheet" href="${assetHref}/css/motion.css">
+<link rel="stylesheet" href="${assetHref}/css/wide-motion.css">` : ''}
 <style>${B.BRANDBAR_CSS}</style>
 ${brandCss}
 ${deck.gallery ? `<style>body.wide.gallery{padding:40px 0 70px;}
@@ -942,7 +1049,7 @@ ${present ? `<style>html,body{margin:0;background:#000;height:100%;overflow:hidd
 .ovcell .nn{position:absolute;top:6px;left:8px;font-size:10px;color:#5a7099;}</style>` : ''}
 </head><body class="${bodyClasses.join(' ')}">
 ${slidesHtml}
-${present ? `<script src="${A}/js/deck-engine.js"></script>\n<script src="${A}/js/deck-steps.js"></script>` : ''}
+${present ? `<script src="${assetHref}/js/deck-engine.js"></script>\n<script src="${assetHref}/js/deck-steps.js"></script>` : ''}
 </body></html>`;
 }
 
@@ -950,17 +1057,19 @@ ${present ? `<script src="${A}/js/deck-engine.js"></script>\n<script src="${A}/j
 function main() {
   const deckPath = process.argv[2], outPath = process.argv[3];
   if (!deckPath || !outPath) { console.error('usage: node build-wide.js <deck.js> <out.html>'); process.exit(1); }
-  const deck = require(path.resolve(deckPath));
-  if (deck._assetBase === undefined) {
+  const inputDeck = require(path.resolve(deckPath));
+  let assetBase = inputDeck._assetBase;
+  if (assetBase === undefined) {
     const outDir = path.dirname(path.resolve(outPath));
-    let rel = path.relative(outDir, ROOT).split(path.sep).join('/');
-    deck._assetBase = rel || '.';
+    const rel = path.relative(outDir, ROOT).split(path.sep).join('/');
+    assetBase = rel || '.';
   }
+  const deck = { ...inputDeck, _assetBase: assetBase };
   const html = buildWideDeck(deck);
   const resolvedOut = path.resolve(outPath);
   fs.mkdirSync(path.dirname(resolvedOut), { recursive: true });
   fs.writeFileSync(resolvedOut, html);
-  console.log(`✓ ${deck.slides.length} wide slides → ${outPath}  (48:9 · 3840×720 · assets: ${deck._assetBase})`);
+  console.log(`✓ ${deck.slides.length} wide slides → ${outPath}  (48:9 · 3840×720 · assets: ${assetBase})`);
 }
 if (require.main === module) main();
 module.exports = { W, buildWideDeck, validateWideDeck, WIDE_W, WIDE_H };
