@@ -1,0 +1,48 @@
+{
+  "name": "beautiful-decks",
+  "version": "1.0.0",
+  "description": "Agent-ready HTML presentation engine for standard 16:9 and ultrawide 48:9 decks",
+  "license": "MIT",
+  "author": "Tri Nguyen",
+  "type": "commonjs",
+  "private": false,
+  "bin": {
+    "beautiful-decks": "bin/beautiful-decks.js"
+  },
+  "files": [
+    "bin/",
+    "engine/",
+    "examples/",
+    "docs/TEMPLATES.md",
+    "llms.txt",
+    "THIRD_PARTY_NOTICES.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "test": "node tests/engine-regressions.cjs && node tests/cli-smoke.cjs",
+    "build:standard": "node bin/beautiful-decks.js build examples/standard.js dist/standard.html",
+    "build:ultrawide": "node bin/beautiful-decks.js build examples/ultrawide.js dist/ultrawide.html",
+    "build:examples": "npm run build:standard && npm run build:ultrawide",
+    "qa:standard": "node bin/beautiful-decks.js qa dist/standard.html --out dist/qa-standard",
+    "qa:ultrawide": "node bin/beautiful-decks.js qa dist/ultrawide.html --out dist/qa-ultrawide --dsf 1",
+    "qa:examples": "npm run qa:standard && npm run qa:ultrawide",
+    "safety": "node scripts/check-public-safety.cjs",
+    "verify": "npm test && npm run build:examples && npm run qa:examples && npm run safety"
+  },
+  "keywords": [
+    "presentations",
+    "slides",
+    "html",
+    "16:9",
+    "ultrawide",
+    "llms.txt",
+    "agents"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "puppeteer-core": "^23.11.1"
+  }
+}

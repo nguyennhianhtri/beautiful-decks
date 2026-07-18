@@ -1,0 +1,549 @@
+/* ============================================================================
+   wide.css — 48:9 WIDESCREEN layer for the Fluent Slide System
+   ----------------------------------------------------------------------------
+   Envisioning-theater format. Loaded AFTER fluent.css; everything is scoped to
+   body.wide so the 16:9 system is untouched.
+
+   CANVAS DECISION (why this is consistent, not a fork):
+     48:9 == 3 × (16:9). Base canvas = 3840×720 = exactly three 1280×720 panels.
+     Height stays 720 → the ENTIRE 16:9 type scale, padding, header/footer,
+     brandbar and motion layer apply verbatim. Only the width tripled.
+
+   RENDER / EXPORT:
+     • dsf 2.625 on 3840×720  → 10080×1890  (EXACT theater spec, final art)
+     • dsf 2     on 3840×720  →  7680×1440  (lighter preview / contact sheets)
+     • PowerPoint: custom slide size 48" × 9"; drop the 10080×1890 PNG full-bleed.
+
+   THE THREE-SCREEN RULE (the only thing 48:9 adds to the mental model):
+     The theater is 3 physical screens. Bezels/seams sit at x=1280 and x=2560.
+     → Never straddle a seam with a face, a logo, a number, or a critical word.
+     → Compose on a 3-zone grid (.wzones) or let panoramic elements (a journey
+       spine, an emotion curve) cross seams BETWEEN stations, never on a glyph.
+     Toggle <body class="wide seams"> to see the bezel guides while designing.
+   ============================================================================ */
+
+/* ---- CANVAS -------------------------------------------------------------- */
+body.wide{
+  --pad-x:130px;            /* wider safe area; theater edges are far from eyes */
+  --pad-y:60px;            /* unchanged → vertical rhythm identical to 16:9 */
+  --seam1:1280px;          /* physical bezel 1 (screen A|B)  */
+  --seam2:2560px;          /* physical bezel 2 (screen B|C)  */
+  --zone-gap:56px;
+  --wide-spine:3px;
+}
+body.wide .slide{width:3840px;height:720px;}
+body.wide.gallery{padding:40px 0 70px;}
+body.wide.gallery .slide{margin:0 auto 40px;box-shadow:var(--shadow-28);}
+body.wide .g-label{width:3840px;}
+
+/* Bezel guides — only when body also has .seams. A dev aid, never in final art. */
+body.wide.seams .slide::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:60;
+  background:
+    linear-gradient(90deg,transparent 1278px,rgba(255,0,128,.32) 1279px 1281px,transparent 1282px),
+    linear-gradient(90deg,transparent 2558px,rgba(255,0,128,.32) 2559px 2561px,transparent 2562px);
+}
+body.wide.seams .slide::before{          /* thirds labels */
+  content:'SCREEN A            SCREEN B            SCREEN C';
+  position:absolute;top:6px;left:0;right:0;z-index:61;text-align:center;
+  letter-spacing:.5em;font-size:11px;color:rgba(255,0,128,.5);pointer-events:none;
+  white-space:pre;font-family:var(--font);
+}
+
+/* ---- THREE-ZONE GRID (compose by physical screen) ------------------------ */
+body.wide .wzones{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--zone-gap);
+  flex:1;min-height:0;align-items:stretch;}
+body.wide .wzone{display:flex;flex-direction:column;min-width:0;}
+body.wide .wzone.center{align-items:center;text-align:center;}
+/* a soft divider you can drop between zones (sits in a gutter, never on a seam) */
+body.wide .zdiv{width:1px;align-self:stretch;background:linear-gradient(180deg,transparent,var(--hairline),transparent);}
+
+/* a panoramic headline band that intentionally spans all three screens */
+body.wide .wband{flex:1;display:flex;flex-direction:column;justify-content:center;}
+
+/* =====================================================================
+   JOURNEY MAP  (the signature wide template) — stations on a spine across
+   the full width, with an EMOTION CURVE plotted above. Impossible at 16:9.
+   ===================================================================== */
+body.wide .journey{position:relative;flex:1;display:flex;flex-direction:column;padding-top:8px;}
+body.wide .jr-emo{position:relative;height:150px;margin:0 0 6px;}
+body.wide .jr-emo svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+body.wide .jr-emo .emo-band{font-size:12px;fill:var(--grey-400);letter-spacing:.12em;text-transform:uppercase;}
+body.wide .jr-track{position:relative;flex:1;}
+body.wide .jr-spine{position:absolute;left:0;right:0;top:14px;height:var(--wide-spine);
+  background:linear-gradient(90deg,var(--ms-blue),var(--blue-primary) 50%,var(--ms-green));border-radius:2px;}
+body.wide .jr-stations{position:absolute;inset:0;display:grid;}
+body.wide .station{position:relative;padding:0 26px;display:flex;flex-direction:column;align-items:center;}
+body.wide .st-dot{width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid var(--accent);
+  box-shadow:0 2px 10px rgba(0,0,0,.12);position:relative;z-index:2;flex:0 0 auto;
+  display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;}
+body.wide .station.gold .st-dot{border-color:var(--ms-yellow);color:#9a6b00;}
+body.wide .station.win .st-dot{border-color:var(--ms-green);color:#3c6b00;}
+body.wide .st-phase{margin-top:14px;font-size:18px;font-weight:700;color:var(--text);text-align:center;line-height:1.2;}
+body.wide .st-when{font-size:12.5px;color:var(--text-secondary);margin-top:2px;letter-spacing:.04em;text-transform:uppercase;}
+body.wide .st-doing{font-size:14.5px;color:var(--text);margin-top:12px;line-height:1.4;text-align:center;max-width:330px;min-height:60px;}
+/* the assistant/intervention, pinned at the bottom of each station */
+body.wide .st-assist{margin-top:auto;width:100%;max-width:330px;border-top:2px solid var(--blue-tint-40);
+  padding-top:10px;display:flex;gap:9px;align-items:flex-start;}
+body.wide .st-assist .sa-ico{width:26px;height:26px;flex:0 0 auto;border-radius:7px;background:var(--blue-tint-50);
+  display:grid;place-items:center;color:var(--blue-primary);}
+body.wide .st-assist .sa-ico svg{width:16px;height:16px;}
+body.wide .st-assist .sa-t{font-size:13px;line-height:1.36;color:var(--blue-shade-20);}
+body.wide .st-assist .sa-t b{color:var(--blue-shade-30);font-weight:700;}
+/* emotion node sits on the curve */
+body.wide .emo-pt{fill:#fff;stroke:var(--accent);stroke-width:3;}
+body.wide .emo-pt.low{stroke:#C94F4F;}
+body.wide .emo-pt.high{stroke:var(--ms-green);}
+body.wide .emo-line{fill:none;stroke:url(#emoGrad);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;}
+body.wide .emo-area{fill:url(#emoFill);opacity:.5;}
+
+/* =====================================================================
+   HORIZONTAL SWIMLANES — actors as rows, time as columns, the full width
+   carries a true process flow with handoffs.
+   ===================================================================== */
+body.wide .swim{flex:1;display:grid;gap:10px;margin-top:6px;min-height:0;}
+body.wide .swim-row{display:grid;grid-template-columns:200px 1fr;gap:0;align-items:stretch;}
+body.wide .sl-actor{display:flex;align-items:center;gap:12px;padding:0 20px;font-weight:700;font-size:16px;
+  border-radius:12px 0 0 12px;color:#fff;}
+body.wide .sl-actor .sa-ic{width:30px;height:30px;display:grid;place-items:center;background:rgba(255,255,255,.18);border-radius:8px;}
+body.wide .sl-actor .sa-ic svg{width:19px;height:19px;color:#fff;}
+body.wide .sl-track{position:relative;display:grid;background:var(--grey-50);border-radius:0 12px 12px 0;
+  border:1px solid var(--grey-200);border-left:none;}
+body.wide .sl-step{margin:10px;border-radius:12px;background:#fff;border:1px solid var(--grey-200);
+  box-shadow:var(--shadow-2);padding:18px 22px;display:flex;flex-direction:column;justify-content:center;}
+body.wide .sl-step .ss-t{font-size:19px;font-weight:680;line-height:1.32;}
+body.wide .sl-step .ss-b{font-size:12.5px;color:var(--text-secondary);margin-top:3px;line-height:1.3;}
+body.wide .sl-step.accent{border-color:var(--blue-tint-30);background:var(--blue-tint-50);position:relative;padding-left:50px;}
+body.wide .sl-step.accent::before{content:'';position:absolute;left:20px;top:50%;transform:translateY(-50%);
+  width:20px;height:20px;border-radius:50%;background:var(--ms-blue,#0078D4);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") center/16px no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") center/16px no-repeat;}
+/* lane tints */
+body.wide .lane-cust .sl-actor{background:linear-gradient(135deg,#1f6feb,#0a4fb4);}
+body.wide .lane-front .sl-actor{background:linear-gradient(135deg,#7a52d6,#5a34b0);}
+body.wide .lane-agent .sl-actor{background:linear-gradient(135deg,#0a8f7a,#066b5a);}
+body.wide .lane-back .sl-actor{background:linear-gradient(135deg,#5c6470,#3a4150);}
+body.wide .swim-axis{display:grid;grid-template-columns:200px 1fr;margin-top:2px;}
+body.wide .swim-axis .sx-rail{display:grid;}
+body.wide .swim-axis .sx-c{font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em;
+  text-align:center;padding-top:6px;border-top:2px solid var(--grey-200);margin:0 10px;}
+
+/* =====================================================================
+   MATURITY RAMP — an ascending climb left→right across the width.
+   ===================================================================== */
+body.wide .ramp{flex:1;display:grid;align-items:end;gap:30px;padding:24px 0 12px;}
+body.wide .rstep{position:relative;background:#fff;border:1px solid var(--grey-200);border-radius:14px;
+  box-shadow:var(--shadow-8);padding:26px 28px;display:flex;flex-direction:column;min-height:236px;}
+body.wide .rstep .rs-lvl{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);}
+body.wide .rstep .rs-t{font-size:26px;font-weight:700;margin-top:8px;line-height:1.1;}
+body.wide .rstep .rs-b{font-size:15.5px;color:var(--text-secondary);margin-top:12px;line-height:1.45;}
+body.wide .rstep .rs-x{margin-top:auto;font-size:13.5px;color:var(--blue-shade-20);background:var(--blue-tint-50);
+  border-radius:8px;padding:9px 12px;line-height:1.4;}
+body.wide .rstep::after{content:'';position:absolute;right:-30px;bottom:46px;width:30px;height:2px;background:var(--grey-300);}
+body.wide .rstep:last-child::after{display:none;}
+/* tier accents via left border */
+body.wide .rstep.l0{border-left:5px solid #9aa3ad;}
+body.wide .rstep.l1{border-left:5px solid var(--ms-blue);}
+body.wide .rstep.l2{border-left:5px solid var(--blue-primary);}
+body.wide .rstep.l3{border-left:5px solid var(--ms-green);}
+
+/* =====================================================================
+   ROADMAP — horizontal phases (columns) × workstream rows. A real Gantt-feel
+   timeline that genuinely needs the width.
+   ===================================================================== */
+body.wide .road{flex:1;display:flex;flex-direction:column;margin-top:10px;min-height:0;}
+body.wide .road-head{display:grid;gap:14px;margin-bottom:18px;}
+body.wide .rh-phase{text-align:center;padding:13px 8px;border-radius:10px;background:var(--navy-800);color:#fff;}
+body.wide .rh-phase .rp-t{font-size:18px;font-weight:700;}
+body.wide .rh-phase .rp-w{font-size:12.5px;color:var(--text-on-dark-dim);margin-top:2px;}
+body.wide .road-body{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;gap:8px;}
+body.wide .road-row{display:grid;grid-template-columns:175px 1fr;gap:14px;align-items:center;}
+body.wide .rr-lbl{font-size:15px;font-weight:650;color:var(--text);}
+body.wide .rr-track{display:grid;gap:14px;}
+body.wide .rr-bar{height:52px;border-radius:9px;display:flex;align-items:center;padding:0 16px;font-size:14px;
+  font-weight:600;color:#fff;box-shadow:var(--shadow-2);}
+body.wide .rr-bar.b1{background:linear-gradient(135deg,#1f6feb,#0a4fb4);}
+body.wide .rr-bar.b2{background:linear-gradient(135deg,#0a8f7a,#066b5a);}
+body.wide .rr-bar.b3{background:linear-gradient(135deg,#7a52d6,#5a34b0);}
+body.wide .rr-bar.ghost{background:var(--grey-100);color:var(--text-secondary);box-shadow:none;border:1px dashed var(--grey-300);}
+
+/* =====================================================================
+   SCOREBOARD RIBBON — a long row of KPI tiles that breathe on ultrawide.
+   ===================================================================== */
+body.wide .ribbon{flex:1;display:grid;gap:20px;align-content:center;}
+body.wide .rb-row{display:grid;gap:20px;}
+body.wide .kpi-w{background:#fff;border:1px solid var(--grey-200);border-radius:14px;box-shadow:var(--shadow-8);
+  padding:22px 24px;display:flex;flex-direction:column;border-top:4px solid var(--kc,var(--accent));}
+body.wide .kpi-w .kw-l{font-size:13.5px;color:var(--text-secondary);font-weight:600;}
+body.wide .kpi-w .kw-n{font-size:54px;font-weight:800;line-height:1;margin-top:10px;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;}
+body.wide .kpi-w .kw-d{font-size:13.5px;font-weight:700;margin-top:8px;}
+body.wide .kpi-w .kw-d.up{color:#0a7d32;}body.wide .kpi-w .kw-d.down{color:#b4452f;}
+body.wide .kpi-w .kw-s{margin-top:auto;padding-top:12px;}
+body.wide .kpi-w .kw-s svg{width:100%;height:34px;display:block;}
+
+/* =====================================================================
+   TRIPTYCH — three acts, one per physical screen. The seams become the frame.
+   ===================================================================== */
+body.wide .tript{display:flex;align-items:center;gap:28px;flex:1;min-height:0;margin-top:20px;padding:0 10px 8px;}
+body.wide .tri-act{flex:1;align-self:stretch;max-height:380px;position:relative;padding:44px 46px;display:flex;flex-direction:column;justify-content:center;border-radius:22px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018));border:1px solid var(--hairline);
+  box-shadow:0 34px 80px -46px #000;}
+body.wide .tri-act::before{content:'';position:absolute;left:0;top:0;width:100%;height:5px;
+  background:linear-gradient(90deg,var(--accent),transparent 72%);opacity:.85;}
+body.wide .tri-act + .tri-act{border-left:1px solid var(--hairline);}
+body.wide .tri-act .ta-n{font-size:15px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);}
+body.wide .tri-act .ta-t{font-size:38px;font-weight:780;line-height:1.1;margin-top:16px;letter-spacing:-.01em;}
+body.wide .tri-act .ta-b{font-size:18.5px;color:var(--text-secondary);line-height:1.6;margin-top:20px;}
+body.wide .tri-act .ta-foot{margin-top:26px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);display:inline-flex;align-items:center;gap:9px;}
+body.wide .tri-act .ta-foot::before{content:'';width:26px;height:2px;background:var(--accent);border-radius:2px;}
+body.wide .tri-act.dark{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 14%,rgba(255,255,255,.03)),rgba(255,255,255,.02));
+  border-color:color-mix(in srgb,var(--accent) 40%,transparent);
+  box-shadow:0 34px 80px -40px color-mix(in srgb,var(--accent) 55%,transparent);}
+body.wide .tri-act.dark .ta-t{color:#fff;}
+body.wide .tri-act.dark .ta-b{color:rgba(255,255,255,.78);}
+body.wide .tript-arrow{align-self:center;flex:none;width:30px;height:30px;color:var(--accent);opacity:.9;display:flex;align-items:center;}
+body.wide .tript-arrow svg{width:100%;height:100%;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--accent) 50%,transparent));}
+
+/* =====================================================================
+   VALUE-CHAIN PIPELINE — inputs (left) → platform (center) → outcomes (right).
+   ===================================================================== */
+body.wide .chain{flex:1;display:grid;grid-template-columns:1fr auto 1.15fr auto 1fr;gap:0;align-items:center;margin-top:6px;}
+body.wide .chain-col{padding:0 40px;display:flex;flex-direction:column;gap:14px;}
+body.wide .chain-col.core{align-items:center;text-align:center;}
+body.wide .cc-cap{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:4px;}
+body.wide .cc-item{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--grey-200);
+  border-radius:11px;box-shadow:var(--shadow-2);padding:13px 16px;font-size:15px;font-weight:600;}
+body.wide .cc-item .ci-ic{width:30px;height:30px;flex:0 0 auto;border-radius:8px;background:var(--grey-100);
+  display:grid;place-items:center;color:var(--blue-primary);}
+body.wide .cc-item .ci-ic svg{width:18px;height:18px;}
+body.wide .chain-core{background:linear-gradient(135deg,var(--navy-800),var(--navy-900));border-radius:20px;
+  padding:42px 30px;color:#fff;width:100%;box-shadow:var(--shadow-16);}
+body.wide .chain-core .core-t{font-size:26px;font-weight:750;line-height:1.12;}
+body.wide .chain-core .core-b{font-size:14.5px;color:var(--text-on-dark-dim);margin-top:12px;line-height:1.45;}
+body.wide .chain-arrow{align-self:center;color:var(--grey-400);}
+body.wide .chain-arrow svg{width:46px;height:46px;}
+
+/* =====================================================================
+   PANORAMIC COVER — title locked to the left screen, cinematic field across
+   center+right, presenter + co-brand. Keeps title clear of seam 1.
+   ===================================================================== */
+body.wide .slide.wcover{background:linear-gradient(115deg,var(--navy-900) 0%,var(--navy-800) 34%,var(--navy-700) 100%);color:#fff;}
+body.wide .wcover .wc-wrap{position:relative;flex:1;display:grid;grid-template-columns:1180px 1fr;align-items:center;padding:0 var(--pad-x);gap:60px;}
+body.wide .wcover .wc-title{font-size:88px;line-height:1.02;font-weight:800;letter-spacing:-.02em;max-width:1100px;}
+body.wide .wcover .wc-sub{font-size:25px;color:var(--text-on-dark-dim);margin-top:22px;max-width:980px;line-height:1.4;}
+body.wide .wcover .wc-meta{display:flex;gap:30px;margin-top:40px;}
+body.wide .wcover .wc-meta .m-k{font-size:14px;color:var(--text-on-dark-dim);}
+body.wide .wcover .wc-meta .m-v{font-size:19px;font-weight:600;margin-top:3px;}
+body.wide .wcover .wc-art{position:relative;height:540px;border-radius:24px;overflow:hidden;}
+body.wide .wcover .wc-art img{width:100%;height:100%;object-fit:cover;opacity:.9;}
+body.wide .wcover .wc-art.motif{background:
+  radial-gradient(120% 120% at 70% 30%,rgba(0,164,239,.28),transparent 60%),
+  radial-gradient(120% 120% at 30% 80%,rgba(127,186,0,.20),transparent 55%),
+  repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,transparent 1px 64px);}
+
+/* =====================================================================
+   STAT TRIPTYCH — three giant numbers, one per screen.
+   ===================================================================== */
+body.wide .bigtri{display:grid;grid-template-columns:repeat(3,1fr);flex:1;align-items:center;}
+body.wide .bt-cell{text-align:center;padding:0 48px;position:relative;}
+body.wide .bt-cell + .bt-cell::before{content:'';position:absolute;left:0;top:18%;height:64%;width:1px;
+  background:linear-gradient(180deg,transparent,var(--hairline),transparent);}
+body.wide .bt-fig{font-size:128px;font-weight:850;line-height:.92;letter-spacing:-.03em;
+  background:linear-gradient(135deg,var(--blue-primary),var(--ms-blue));-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;font-variant-numeric:tabular-nums;}
+body.wide .bt-cap{font-size:19px;color:var(--text-secondary);margin-top:14px;line-height:1.35;}
+body.wide .bt-cell.gold .bt-fig{background:linear-gradient(135deg,#E8A200,var(--ms-yellow));-webkit-background-clip:text;background-clip:text;}
+body.wide .bt-cell.green .bt-fig{background:linear-gradient(135deg,#3c8c2a,var(--ms-green));-webkit-background-clip:text;background-clip:text;}
+
+/* =====================================================================
+   ECOSYSTEM CONSTELLATION — one hub, many spokes spread across the width.
+   (SVG is authored full-canvas so coords == px; see build-wide.js)
+   ===================================================================== */
+body.wide .constel{position:static;flex:1;}
+body.wide .constel svg{position:absolute;left:0;top:0;width:3840px;height:720px;z-index:0;}
+body.wide .cn-spoke{fill:none;stroke:var(--grey-300);stroke-width:2;stroke-dasharray:5 6;}
+body.wide .cn-hub-c{fill:var(--navy-800);}
+body.wide .cn-node{fill:#fff;stroke:var(--accent);stroke-width:2.5;}
+body.wide .cn-lbl{font-size:15px;font-weight:650;fill:var(--text);}
+body.wide .cn-sub{font-size:12px;fill:var(--text-secondary);}
+body.wide .cn-hub-t{font-size:24px;font-weight:750;fill:#fff;}
+
+/* =====================================================================
+   PERSONA SPREAD — N personas across the width (envisioning workshops).
+   ===================================================================== */
+body.wide .pers{display:grid;flex:1;gap:24px;margin-top:14px;}
+body.wide .pcard{background:#fff;border:1px solid var(--grey-200);border-radius:16px;box-shadow:var(--shadow-8);
+  padding:30px 28px;display:flex;flex-direction:column;}
+body.wide .pcard .pc-top{display:flex;gap:16px;align-items:center;}
+body.wide .pcard .pc-av{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--blue-primary),var(--ms-blue));
+  display:grid;place-items:center;color:#fff;font-size:24px;font-weight:700;flex:0 0 auto;}
+body.wide .pcard .pc-nm{font-size:21px;font-weight:700;}
+body.wide .pcard .pc-rl{font-size:14.5px;color:var(--text-secondary);margin-top:1px;}
+body.wide .pcard .pc-sec{margin-top:22px;}
+body.wide .pcard .pc-sec:last-child{margin-bottom:4px;}
+body.wide .pcard .pc-h{font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);}
+body.wide .pcard .pc-list{margin-top:10px;display:flex;flex-direction:column;gap:9px;}
+body.wide .pcard .pc-list li{list-style:none;font-size:15px;line-height:1.4;padding-left:18px;position:relative;color:var(--text);}
+body.wide .pcard .pc-list li::before{content:'';position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--accent);}
+body.wide .pcard.gain .pc-h{color:#0a7d32;}body.wide .pcard.gain .pc-list li::before{background:var(--ms-green);}
+
+/* =====================================================================
+   DAY-IN-THE-LIFE — a single persona's day as a time-of-day strip.
+   ===================================================================== */
+body.wide .dayl{flex:1;display:grid;gap:0;margin-top:10px;grid-auto-flow:column;}
+body.wide .dl-seg{position:relative;padding:14px 26px;display:flex;flex-direction:column;}
+body.wide .dl-seg + .dl-seg{border-left:1px solid var(--hairline);}
+body.wide .dl-time{font-size:13px;font-weight:800;letter-spacing:.06em;color:var(--accent);text-transform:uppercase;}
+body.wide .dl-moment{font-size:17px;font-weight:700;margin-top:8px;line-height:1.18;}
+body.wide .dl-b{font-size:13.5px;color:var(--text-secondary);margin-top:8px;line-height:1.38;}
+body.wide .dl-assist{margin-top:auto;padding-top:12px;font-size:13px;color:var(--blue-shade-20);
+  border-top:2px solid var(--blue-tint-40);line-height:1.36;display:flex;gap:8px;}
+body.wide .dl-assist .da-ic{flex:0 0 auto;color:var(--blue-primary);}
+body.wide .dl-assist .da-ic svg{width:16px;height:16px;}
+/* time-of-day wash, left(dawn)→right(dusk) */
+body.wide .dl-seg:nth-child(1){background:linear-gradient(180deg,#fff,#fff7e8);}
+body.wide .dl-seg:nth-child(2){background:linear-gradient(180deg,#fff,#fff1d6);}
+body.wide .dl-seg:nth-child(3){background:linear-gradient(180deg,#fff,#eaf4ff);}
+body.wide .dl-seg:nth-child(4){background:linear-gradient(180deg,#fff,#e4ecff);}
+body.wide .dl-seg:nth-child(5){background:linear-gradient(180deg,#fff,#ede7fb);}
+
+/* ---- shared wide header room: push title block clear of brandbar ---------- */
+body.wide .slide-pad{padding:var(--pad-y) var(--pad-x);}
+body.wide .wkicker{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
+body.wide .wtitle{font-size:42px;font-weight:750;letter-spacing:-.01em;line-height:1.08;}
+body.wide .wsub{font-size:19px;color:var(--text-secondary);margin-top:8px;max-width:1500px;line-height:1.4;}
+body.wide .waccent{width:60px;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--ms-blue),var(--blue-primary));margin:14px 0 6px;}
+
+/* ============================================================================
+   PITCH-BLACK DARK THEME (default for the theatre — big screens make a light
+   field harsh on the eye). Activated by body.wide.theme-dark. True #000 so it
+   matches a pitch-black PPT with no greenish/navy cast; brand colours stay
+   vivid as ACCENTS (journey curve, KPI numbers, lane tints, stat gradients).
+   Mirrors the 16:9 dark recipe: surfaces → translucent white, text → white,
+   hairlines → low-alpha white.
+   ============================================================================ */
+body.wide.theme-dark{background:#000;}
+body.wide.theme-dark .slide{background:#000;color:#fff;}
+body.wide.theme-dark.gallery{background:#000;}
+body.wide.theme-dark.gallery .slide{box-shadow:0 0 0 1px rgba(255,255,255,.06);}
+body.wide.theme-dark .g-label{color:#7db8ff;}
+
+/* type */
+body.wide.theme-dark .wtitle,
+body.wide.theme-dark .wc-title{color:#fff;}
+body.wide.theme-dark .wsub{color:rgba(255,255,255,.66);}
+body.wide.theme-dark .eyebrow.bar{color:var(--ms-blue);}
+
+/* shared wide headers/accents keep the blue accent rule (pops on black) */
+body.wide.theme-dark .waccent{background:linear-gradient(90deg,var(--ms-blue),var(--blue-primary));}
+
+/* ---- JOURNEY MAP -------------------------------------------------------- */
+body.wide.theme-dark .jr-emo .emo-band{fill:rgba(255,255,255,.4);}
+body.wide.theme-dark .st-dot{background:#0b0b0d;box-shadow:0 0 0 1px rgba(255,255,255,.1),0 2px 12px rgba(0,0,0,.6);}
+body.wide.theme-dark .st-phase{color:#fff;}
+body.wide.theme-dark .st-when{color:rgba(255,255,255,.55);}
+body.wide.theme-dark .st-doing{color:rgba(255,255,255,.82);}
+body.wide.theme-dark .st-assist{border-top-color:rgba(0,164,239,.4);}
+body.wide.theme-dark .st-assist .sa-ico{background:rgba(0,164,239,.16);color:#5cc8ff;}
+body.wide.theme-dark .st-assist .sa-t{color:rgba(255,255,255,.78);}
+body.wide.theme-dark .st-assist .sa-t b{color:#9ad0ff;}
+body.wide.theme-dark .emo-pt{fill:#0b0b0d;}
+
+/* ---- SWIMLANES ---------------------------------------------------------- */
+body.wide.theme-dark .sl-track{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.1);}
+body.wide.theme-dark .sl-step{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);box-shadow:none;}
+body.wide.theme-dark .sl-step .ss-t{color:#fff;}
+body.wide.theme-dark .sl-step .ss-b{color:rgba(255,255,255,.6);}
+body.wide.theme-dark .sl-step.accent{background:rgba(0,164,239,.16);border-color:rgba(0,164,239,.45);}
+body.wide.theme-dark .swim-axis .sx-c{color:rgba(255,255,255,.55);border-top-color:rgba(255,255,255,.14);}
+
+/* ---- MATURITY RAMP ------------------------------------------------------ */
+body.wide.theme-dark .rstep{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);box-shadow:none;}
+body.wide.theme-dark .rstep .rs-t{color:#fff;}
+body.wide.theme-dark .rstep .rs-b{color:rgba(255,255,255,.64);}
+body.wide.theme-dark .rstep .rs-x{background:rgba(0,164,239,.14);color:#9ad0ff;}
+body.wide.theme-dark .rstep::after{background:rgba(255,255,255,.2);}
+
+/* ---- ROADMAP ------------------------------------------------------------ */
+body.wide.theme-dark .rh-phase{background:rgba(255,255,255,.08);}
+body.wide.theme-dark .rh-phase .rp-w{color:rgba(255,255,255,.6);}
+body.wide.theme-dark .rr-lbl{color:rgba(255,255,255,.9);}
+body.wide.theme-dark .rr-bar.ghost{background:rgba(255,255,255,.05);color:rgba(255,255,255,.55);border-color:rgba(255,255,255,.18);}
+
+/* ---- SCOREBOARD RIBBON -------------------------------------------------- */
+body.wide.theme-dark .kpi-w{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);box-shadow:none;}
+body.wide.theme-dark .kpi-w .kw-l{color:rgba(255,255,255,.62);}
+body.wide.theme-dark .kpi-w .kw-n{color:#fff;}
+body.wide.theme-dark .kpi-w .kw-d.up{color:#4ed27a;}
+body.wide.theme-dark .kpi-w .kw-d.down{color:#ff8d72;}
+
+/* ---- TRIPTYCH ----------------------------------------------------------- */
+body.wide.theme-dark .tri-act + .tri-act{border-left-color:rgba(255,255,255,.12);}
+body.wide.theme-dark .tri-act .ta-t{color:#fff;}
+body.wide.theme-dark .tri-act .ta-b{color:rgba(255,255,255,.66);}
+body.wide.theme-dark .tri-act.dark{background:rgba(255,255,255,.045);}
+body.wide.theme-dark .tri-act.dark .ta-b{color:rgba(255,255,255,.72);}
+
+/* ---- VALUE-CHAIN -------------------------------------------------------- */
+body.wide.theme-dark .cc-cap{color:rgba(255,255,255,.6);}
+body.wide.theme-dark .cc-item{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);box-shadow:none;color:#fff;}
+body.wide.theme-dark .cc-item .ci-ic{background:rgba(0,164,239,.16);color:#5cc8ff;}
+body.wide.theme-dark .chain-core{background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.12);box-shadow:none;}
+body.wide.theme-dark .chain-arrow{color:rgba(255,255,255,.4);}
+
+/* ---- STAT TRIPTYCH ------------------------------------------------------ */
+body.wide.theme-dark .bt-cap{color:rgba(255,255,255,.66);}
+body.wide.theme-dark .bt-cell + .bt-cell::before{background:linear-gradient(180deg,transparent,rgba(255,255,255,.18),transparent);}
+
+/* ---- CONSTELLATION ------------------------------------------------------ */
+body.wide.theme-dark .cn-spoke{stroke:rgba(255,255,255,.22);}
+body.wide.theme-dark .cn-hub-c{fill:#10243f;}
+body.wide.theme-dark .cn-node{fill:#0b0b0d;stroke:var(--ms-blue);}
+body.wide.theme-dark .cn-lbl{fill:#fff;}
+body.wide.theme-dark .cn-sub{fill:rgba(255,255,255,.55);}
+
+/* ---- PERSONA SPREAD ----------------------------------------------------- */
+body.wide.theme-dark .pcard{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);box-shadow:none;}
+body.wide.theme-dark .pcard .pc-nm{color:#fff;}
+body.wide.theme-dark .pcard .pc-rl{color:rgba(255,255,255,.6);}
+body.wide.theme-dark .pcard .pc-list li{color:rgba(255,255,255,.82);}
+
+/* ---- DAY IN THE LIFE (time-of-day washes → faint glows on black) -------- */
+body.wide.theme-dark .dl-seg + .dl-seg{border-left-color:rgba(255,255,255,.12);}
+body.wide.theme-dark .dl-moment{color:#fff;}
+body.wide.theme-dark .dl-b{color:rgba(255,255,255,.62);}
+body.wide.theme-dark .dl-assist{color:#9ad0ff;border-top-color:rgba(0,164,239,.4);}
+body.wide.theme-dark .dl-assist .da-ic{color:#5cc8ff;}
+body.wide.theme-dark .dl-seg:nth-child(1){background:linear-gradient(180deg,#000,rgba(255,184,0,.06));}
+body.wide.theme-dark .dl-seg:nth-child(2){background:linear-gradient(180deg,#000,rgba(255,140,0,.07));}
+body.wide.theme-dark .dl-seg:nth-child(3){background:linear-gradient(180deg,#000,rgba(0,164,239,.07));}
+body.wide.theme-dark .dl-seg:nth-child(4){background:linear-gradient(180deg,#000,rgba(60,90,200,.08));}
+body.wide.theme-dark .dl-seg:nth-child(5){background:linear-gradient(180deg,#000,rgba(122,82,214,.08));}
+
+/* ---- COVER / SECTION / STATEMENT (pitch black, motif glow only) --------- */
+body.wide.theme-dark .slide.wcover{background:#000;}
+body.wide.theme-dark .wcover .wc-sub{color:rgba(255,255,255,.66);}
+body.wide.theme-dark .wcover .wc-meta .m-k{color:rgba(255,255,255,.6);}
+body.wide.theme-dark .wcover .wc-art.motif{background:
+  radial-gradient(120% 120% at 70% 30%,rgba(0,164,239,.22),transparent 60%),
+  radial-gradient(120% 120% at 30% 80%,rgba(127,186,0,.14),transparent 55%),
+  repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 1px,transparent 1px 64px);}
+
+/* ============================================================================
+   WIDE CHROME — brand + footer re-thought for 3 screens (NOT 16:9 stretched).
+   ----------------------------------------------------------------------------
+   16:9 logic: brandbar top-right corner, footer = thin full-width bar with text
+   at far left + far right. On 48:9 that strands the logo in screen C's corner and
+   pushes the two footer scraps ~3500px apart — nobody reads them as related.
+   Wide logic instead:
+     • BRAND RAIL — a thin VERTICAL co-brand lockup hugging the right edge,
+       vertically centred. Reads as a deliberate frame/bookend, lives entirely
+       in the right safe-margin so it never eats content.
+     • FOOTER — a single centred unit under the FOCAL middle screen (where the
+       eye rests), not smeared across the outer edges.
+   ============================================================================ */
+body.wide .brandbar{display:none;}          /* kill the inherited 16:9 corner bug */
+
+/* TOP-RIGHT horizontal brandbar — large enough to read across a 3840px wall.
+   (Was a tiny 30px vertical edge-rail; the council flagged it as invisible.) */
+body.wide .wrail{position:absolute;right:64px;top:42px;z-index:50;
+  display:flex;flex-direction:row;align-items:center;gap:22px;}
+body.wide .wrail .wr-ms{width:52px;height:52px;display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+body.wide .wrail .wr-ms i{display:block;border-radius:2.5px;}
+body.wide .wrail .wr-ms i:nth-child(1){background:#7C3AED;}body.wide .wrail .wr-ms i:nth-child(2){background:#06B6D4;}
+body.wide .wrail .wr-ms i:nth-child(3){background:#F59E0B;}body.wide .wrail .wr-ms i:nth-child(4){background:#EC4899;}
+body.wide .wrail .wr-div{width:2px;height:46px;background:linear-gradient(180deg,transparent,var(--hairline),transparent);}
+body.wide .wrail .wr-cust{display:flex;align-items:center;justify-content:center;}
+body.wide .wrail .wr-cust svg,body.wide .wrail .wr-cust img{height:46px;width:auto;display:block;}
+body.wide .wrail .wr-cust.plate{background:#fff;border-radius:10px;padding:11px 16px;box-shadow:0 4px 18px rgba(0,0,0,.4);}
+body.wide .wrail .wr-cust.plate svg,body.wide .wrail .wr-cust.plate img{height:40px;}
+
+/* centred footer under the middle screen */
+body.wide .wfoot{position:absolute;left:0;right:0;bottom:30px;z-index:50;display:flex;justify-content:center;
+  align-items:center;gap:16px;pointer-events:none;}
+body.wide .wfoot .wf-cap{font-size:14px;letter-spacing:.04em;color:var(--text-secondary);font-family:var(--font);}
+body.wide .wfoot .wf-dot{width:3px;height:3px;border-radius:50%;background:var(--grey-400);}
+body.wide .wfoot .wf-pg{font-size:14px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+
+/* dark-theme chrome */
+body.wide.theme-dark .wrail .wr-div{background:linear-gradient(180deg,transparent,rgba(255,255,255,.28),transparent);}
+body.wide.theme-dark .wfoot .wf-cap{color:rgba(255,255,255,.5);}
+body.wide.theme-dark .wfoot .wf-dot{background:rgba(255,255,255,.3);}
+body.wide.theme-dark .wfoot .wf-pg{color:rgba(255,255,255,.85);}
+
+/* content slides: reserve the right rail margin so nothing tucks under the brand */
+body.wide .slide-pad{padding-right:150px;}
+
+/* ============================================================================
+   REWORKED FRAMING TEMPLATES — composed for 3 screens, not stretched.
+   ============================================================================ */
+
+/* ---- SECTION DIVIDER: giant number on screen A, title on screen B --------- */
+body.wide .wsection{padding:0;}
+body.wide .wsec-grid{flex:1;display:grid;grid-template-columns:1280px 1fr 360px;align-items:center;}
+body.wide .wsec-num{font-size:440px;font-weight:850;line-height:.8;text-align:center;letter-spacing:-.04em;
+  background:linear-gradient(160deg,rgba(0,164,239,.9),rgba(0,120,212,.4));-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;}
+body.wide .wsec-body{padding:0 80px;}
+body.wide .wsec-title{font-size:72px;font-weight:800;line-height:1.04;letter-spacing:-.02em;color:#fff;margin-top:14px;max-width:1180px;}
+body.wide .wsec-sub{font-size:22px;color:rgba(255,255,255,.66);margin-top:22px;max-width:1080px;line-height:1.45;}
+body.wide .wsec-rule{justify-self:center;width:1px;height:300px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.22),transparent);}
+body.wide:not(.theme-dark) .wsection{background:var(--navy-900);}
+body.wide:not(.theme-dark) .wsec-title{color:#fff;}
+
+/* ---- STATEMENT: one focal point on the middle screen, framed wings -------- */
+body.wide .wstatement{padding:0;align-items:center;justify-content:center;}
+body.wide .wst-stage{position:absolute;left:1280px;width:1280px;top:0;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 70px;}
+body.wide .wst-title{font-size:58px;font-weight:800;line-height:1.16;letter-spacing:-.015em;color:#fff;}
+body.wide .wst-attr{margin-top:30px;font-size:20px;color:rgba(255,255,255,.6);font-weight:500;}
+body.wide .wst-tick{position:absolute;top:50%;transform:translateY(-50%);width:64px;height:3px;border-radius:2px;
+  background:linear-gradient(90deg,var(--ms-blue),transparent);}
+
+/* ---- CLOSE: cinematic finale, bookends the cover ------------------------- */
+body.wide .wclose{position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center;}
+body.wide .wcl-art{position:absolute;inset:0;z-index:1;}
+body.wide .wcl-art svg{width:100%;height:100%;display:block;}
+body.wide .wcl-art::after{content:'';position:absolute;inset:0;background:radial-gradient(60% 80% at 50% 50%,transparent 40%,rgba(0,0,0,.55));}
+body.wide .wcl-stage{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;padding:0 200px;}
+body.wide .wcl-brand{display:flex;align-items:center;gap:26px;margin-bottom:38px;}
+body.wide .wcl-brand .wcl-ms{width:46px;height:46px;display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+body.wide .wcl-brand .wcl-ms i{display:block;border-radius:2px;}
+body.wide .wcl-brand .wcl-ms i:nth-child(1){background:#7C3AED;}body.wide .wcl-brand .wcl-ms i:nth-child(2){background:#06B6D4;}
+body.wide .wcl-brand .wcl-ms i:nth-child(3){background:#F59E0B;}body.wide .wcl-brand .wcl-ms i:nth-child(4){background:#EC4899;}
+body.wide .wcl-brand .wcl-x{font-size:30px;font-weight:300;color:rgba(255,255,255,.5);}
+body.wide .wcl-brand .wcl-ey{height:50px;display:flex;}body.wide .wcl-brand .wcl-ey svg{height:50px;width:auto;}
+body.wide .wcl-title{font-size:96px;font-weight:850;line-height:1.05;letter-spacing:-.025em;color:#fff;margin-top:18px;
+  text-shadow:0 6px 60px rgba(0,0,0,.5);}
+body.wide .wcl-sub{font-size:26px;line-height:1.45;color:rgba(255,255,255,.74);margin-top:30px;max-width:58ch;}
+body.wide .wcl-cta{display:flex;align-items:center;justify-content:center;gap:22px;margin-top:42px;
+  font-size:20px;font-weight:750;color:var(--accent);letter-spacing:.005em;}
+body.wide .wcl-cta .wcl-dot{width:6px;height:6px;border-radius:50%;background:color-mix(in srgb,var(--accent) 70%,transparent);flex:none;}
+body.wide .wst-tick.left{left:760px;}
+body.wide .wst-tick.right{right:760px;background:linear-gradient(270deg,var(--ms-blue),transparent);}
+body.wide:not(.theme-dark) .wstatement{background:#000;}
+
+/* ---- COVER: title on screen A, cinematic field on screens B+C ------------- */
+body.wide .wcover .wc-wrap{grid-template-columns:1280px 1fr;gap:0;padding:0;}
+body.wide .wcover .wc-wrap > div:first-child{padding:0 80px 0 var(--pad-x);position:relative;z-index:2;}
+body.wide .wcover .wc-art{position:relative;height:100%;border-radius:0;}
+body.wide .wcover .wc-art img{border-radius:0;}
+/* soft scrim so the dark title zone melts into the cinematic field (no hard seam edge) */
+body.wide .wcover .wc-art::before{content:'';position:absolute;left:-2px;top:0;width:420px;height:100%;z-index:1;
+  background:linear-gradient(90deg,#000,rgba(0,0,0,0));}
+
+/* ---- 26 PANORAMIC SCREENSHOT GALLERY (wshots) ---- */
+body.wide .wshots{display:grid;gap:40px;flex:1;min-height:0;align-content:center;align-items:start;margin-top:14px;}
+body.wide .wshot{display:flex;flex-direction:column;gap:14px;margin:0;min-height:0;}
+body.wide .wshot .wsh-img{height:340px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 36px 90px -36px rgba(0,0,0,.92);background:#05070b;}
+body.wide .wshot .wsh-img img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;}
+body.wide .wshot .wsh-cap{font-size:21px;font-weight:700;line-height:1.3;color:#fff;letter-spacing:-.01em;}
+body.wide.theme-dark .wshot .wsh-cap{color:rgba(255,255,255,.92);}
+body.wide .wshot .wsh-chips{display:flex;flex-wrap:wrap;gap:10px;}
+body.wide .wshot .wsh-chip{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:600;
+  padding:8px 14px;border-radius:11px;border:1px solid var(--cc);background:color-mix(in srgb,var(--cc) 12%,transparent);
+  color:rgba(255,255,255,.9);line-height:1.2;}
+body.wide .wshot .wsh-chip b{color:var(--cc);font-weight:800;}

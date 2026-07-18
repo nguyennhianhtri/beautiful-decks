@@ -1,0 +1,220 @@
+/* ============================================================================
+   Beautiful Decks — MOTION LAYER
+   Drop-in companion to fluent.css. Adds presentation motion that is keyed to
+   the .active slide (so each build-in fires when the slide is reached, and
+   re-fires on revisit). Pairs with the nav engine emitted by build.js when a
+   deck sets `motion:true`.
+
+   DESIGN RULE (read before adding motion):
+     Motion must BE the argument, not decorate it. Every animation here earns
+     its place by sequencing meaning — old way first → agent takes over;
+     scattered context → one governed orb; four sources → one agent. If a
+     build-in doesn't clarify the story, don't use it.
+
+   ------------------------------------------------------------------------
+   TWO HARD-WON GUARD-RAILS (both caused real, shipped bugs — do not repeat):
+
+   (1) NEVER layer a second keyframe animation onto an element that already
+       carries the `.r` reveal class. Same-specificity rules resolve by
+       SOURCE ORDER, so the later `animation:` silently REPLACES the reveal —
+       with `both` fill + a delay, the element stays invisible until the
+       second animation's delay elapses, then appears LATE and out of order.
+       FIX PATTERN: drop `.r`, give the element ONE self-contained keyframe
+       that does reveal→hold→recede in a single timeline (see `.seq-recede`).
+
+   (2) NEVER center an absolutely-positioned element with
+       `left:50%; transform:translateX(-50%)` if it ALSO animates via a
+       keyframe whose `to{}` sets `transform:none` (e.g. the `rise` primitive).
+       The animation end-state wipes the −50% centering, so the element snaps
+       right and a `white-space:nowrap` line clips off the slide edge.
+       FIX PATTERN: center with `left:50%; width:W; margin-left:-W/2`
+       (transform-free) and use a translateY-only reveal (`.cap-rise`).
+       See `.motion-cap`.
+   ============================================================================ */
+
+/* ---- local fallbacks so this file works in any deck context -------------- */
+:root{
+  --mo-accent:var(--accent,#2b8fff);
+  --mo-blue:var(--ms-blue,#2b8fff);
+  --mo-cyan:#37e6c9;
+  --mo-green:var(--ms-green,#3dd68c);
+  --mo-gold:var(--ms-yellow,#f5c24b);
+  --mo-red:var(--ms-red,#ff6a5f);
+  --mo-line:rgba(255,255,255,.12);
+  --mo-ease:cubic-bezier(.2,.7,.2,1);
+}
+
+/* ===========================================================================
+   1. REVEAL PRIMITIVE  — the foundation. Add class `r` to anything, set the
+      delay with inline `--d` (e.g. style="--d:.4s"). Fires on .active.
+   =========================================================================== */
+.r{opacity:0;}
+.slide.active .r{animation:mo-rise .62s var(--mo-ease) both;animation-delay:var(--d,0s);}
+@keyframes mo-rise{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:none;}}
+
+/* translateY-only reveal — safe for horizontally-centered elements (see GR #2) */
+.cap-rise{opacity:0;}
+.slide.active .cap-rise{animation:mo-caprise .7s var(--mo-ease) both;animation-delay:var(--d,0s);}
+@keyframes mo-caprise{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
+
+/* convenience: auto-stagger immediate children (no per-item --d needed) */
+.stagger.slide-on > *{opacity:0;}
+.slide.active .stagger > *{animation:mo-rise .55s var(--mo-ease) both;}
+.slide.active .stagger > *:nth-child(1){animation-delay:.05s;}
+.slide.active .stagger > *:nth-child(2){animation-delay:.18s;}
+.slide.active .stagger > *:nth-child(3){animation-delay:.31s;}
+.slide.active .stagger > *:nth-child(4){animation-delay:.44s;}
+.slide.active .stagger > *:nth-child(5){animation-delay:.57s;}
+.slide.active .stagger > *:nth-child(6){animation-delay:.70s;}
+
+/* ===========================================================================
+   2. SEQUENCED REVEAL → HOLD → RECEDE  (the "old way first, agent takes over"
+      pattern, slide-3 taskflow). ONE keyframe, never combined with `.r`.
+      Tune the hold by changing the % stops; total duration via animation dur.
+   =========================================================================== */
+.seq-recede{opacity:0;}
+.slide.active .seq-recede{animation:mo-ansLife 5s ease .4s both;}
+@keyframes mo-ansLife{
+  0%{opacity:0;transform:translateY(22px);}
+  13%{opacity:1;transform:translateY(0);}     /* arrive */
+  84%{opacity:1;transform:none;}               /* hold while spoken to */
+  100%{opacity:.5;transform:translateX(-10px) scale(.99);}  /* recede, stay legible */
+}
+
+/* the partner panel that "takes over" — arrives after the first panel holds */
+.seq-takeover{opacity:0;}
+.slide.active .seq-takeover{animation:mo-rise .6s var(--mo-ease) 1.6s both;}
+
+/* checklist items that tick on in sequence inside the takeover panel */
+.seq-task{opacity:.25;}
+.slide.active .seq-task{animation:mo-taskon .5s ease both;}
+.slide.active .seq-task:nth-child(2){animation-delay:1.95s;}
+.slide.active .seq-task:nth-child(3){animation-delay:2.30s;}
+.slide.active .seq-task:nth-child(4){animation-delay:2.65s;}
+.slide.active .seq-task:nth-child(5){animation-delay:3.00s;}
+@keyframes mo-taskon{to{opacity:1;}}
+
+/* SVG check that draws itself (pair with a <path> + stroke-dasharray) */
+.draw-check path{stroke-dasharray:22;stroke-dashoffset:22;}
+.slide.active .draw-check path{animation:mo-draw .4s ease forwards;}
+@keyframes mo-draw{to{stroke-dashoffset:0;}}
+
+/* ===========================================================================
+   3. CENTERED CAPTION  — bottom-of-slide payoff line. Transform-free centering
+      (GR #2). Set width to taste; margin-left must be −width/2.
+   =========================================================================== */
+.motion-cap{position:absolute;left:50%;bottom:48px;width:760px;margin-left:-380px;
+  text-align:center;font-size:20px;font-weight:700;opacity:0;}
+.slide.active .motion-cap{animation:mo-caprise .7s ease 2.6s both;}
+
+/* ===========================================================================
+   4. CONVERGE  — scattered context chips fly into one governed orb
+      (slide-8 "your moat is your context"). Each chip sets start offset
+      (--sx,--sy) and rest position (--ex,--ey) inline; orb fuses at center.
+   =========================================================================== */
+.converge{position:absolute;inset:0;}
+.cchip{position:absolute;left:50%;top:50%;}
+.slide.active .cchip{animation:mo-converge 1.4s cubic-bezier(.5,0,.2,1) both;animation-delay:var(--d);}
+@keyframes mo-converge{
+  0%{transform:translate(calc(-50% + var(--sx)),calc(-50% + var(--sy))) scale(.92);opacity:0;}
+  20%{opacity:1;}
+  100%{transform:translate(calc(-50% + var(--ex)),calc(-50% + var(--ey))) scale(1);opacity:1;}}
+.cvorb{position:absolute;left:50%;top:50%;width:104px;height:104px;border-radius:50%;
+  transform:translate(-50%,-50%);background:radial-gradient(circle at 38% 32%,#bfe0ff,var(--mo-blue));opacity:.25;}
+.slide.active .cvorb{animation:mo-fuse 2.2s ease .5s forwards;}
+@keyframes mo-fuse{to{opacity:1;box-shadow:0 0 64px 14px color-mix(in srgb,var(--mo-blue) 40%,transparent);}}
+
+/* ===========================================================================
+   5. RADIAL FOUR-SURFACES  — N labels around a center hub, dashed streams that
+      "flow" inward, a colored dot anchored at each stream's outer end so the
+      label and line always align (slide-7 IQ).
+      KEY ALIGNMENT TRICK: put the SVG viewBox == slide size (0 0 1280 720) and
+      let it fill the stage 1:1, so SVG coords == pixel coords. Anchor dots as
+      <circle> INSIDE the svg at each label; never position dots in HTML space
+      and lines in SVG space — they will never line up.
+   =========================================================================== */
+.iqsvg{position:absolute;inset:0;width:100%;height:100%;}
+.iqsvg path{fill:none;stroke-width:2;stroke-dasharray:7 7;opacity:0;}
+.slide.active .iqsvg path{animation:mo-flow 1.4s linear both,mo-fadein .5s ease both;}
+.slide.active .iqsvg path:nth-child(1){animation-delay:.6s;}
+.slide.active .iqsvg path:nth-child(2){animation-delay:.8s;}
+.slide.active .iqsvg path:nth-child(3){animation-delay:1.0s;}
+.slide.active .iqsvg path:nth-child(4){animation-delay:1.2s;}
+@keyframes mo-flow{from{stroke-dashoffset:120;}to{stroke-dashoffset:0;}}
+@keyframes mo-fadein{to{opacity:.85;}}
+.iqdot{opacity:0;}
+.slide.active .iqdot{animation:mo-fadein .5s ease 1s both;}
+.iqhub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}
+.slide.active .iqhub{animation:mo-hubfuse 2.2s ease .5s forwards,mo-spin 12s linear infinite;}
+@keyframes mo-hubfuse{to{box-shadow:0 0 60px 12px color-mix(in srgb,var(--mo-blue) 40%,transparent);}}
+@keyframes mo-spin{to{transform:translate(-50%,-50%) rotate(360deg);}}
+
+/* ===========================================================================
+   6. BIG NUMBER  — one giant figure that scales+fades in and lands.
+      NOTE: a true digit count-up needs JS (the nav engine exposes a
+      data-countup hook). This CSS handles the entrance; if JS is present it
+      animates the value from data-from → textContent.
+   =========================================================================== */
+.big-figure{opacity:0;transform-origin:left center;}
+.slide.active .big-figure{animation:mo-bigland .9s cubic-bezier(.16,.84,.3,1) .2s both;}
+@keyframes mo-bigland{from{opacity:0;transform:translateY(28px) scale(.94);}to{opacity:1;transform:none;}}
+
+/* ===========================================================================
+   7. PULSE RING  — always-on / monitoring signal (Scout, autopilots).
+   =========================================================================== */
+.pulsering{position:absolute;left:50%;top:50%;width:60px;height:60px;border-radius:50%;
+  transform:translate(-50%,-50%);background:radial-gradient(circle,#bfe0ff,var(--mo-accent));}
+.pulsering::before,.pulsering::after{content:"";position:absolute;inset:0;border-radius:50%;
+  border:2px solid var(--mo-accent);}
+.slide.active .pulsering::before{animation:mo-pulse 2.6s ease-out infinite;}
+.slide.active .pulsering::after{animation:mo-pulse 2.6s ease-out 1.3s infinite;}
+@keyframes mo-pulse{from{transform:scale(1);opacity:.7;}to{transform:scale(3.2);opacity:0;}}
+
+/* worktree / branch diagram: nodes wake in sequence (GitHub Copilot slide).
+   Same alignment trick as radial — nodes are <circle> INSIDE the branch SVG. */
+.tnode{opacity:0;}
+.slide.active .tnode{animation:mo-fadein .45s ease both;}
+.slide.active .tnode:nth-of-type(1){animation-delay:.5s;}
+.slide.active .tnode:nth-of-type(2){animation-delay:.9s;}
+.slide.active .tnode:nth-of-type(3){animation-delay:1.2s;}
+.slide.active .tnode:nth-of-type(4){animation-delay:1.5s;}
+
+/* ===========================================================================
+   9. SECURITY SCANNER  — grid field + sweeping beam that surfaces threats
+      as sequential "hits" (MDASH / any security or detection slide).
+      Markup:  <div class="scan"><div class="grid"></div><div class="beam"></div>
+               <span class="hit"></span> × N </div>
+      The beam sweeps continuously; each hit pops in on its own delay. Tune hit
+      positions inline (top/left) or via the nth-child defaults below.
+   =========================================================================== */
+.scan{position:absolute;inset:24px;border-radius:12px;border:1px solid color-mix(in srgb,var(--mo-red) 30%,transparent);overflow:hidden;}
+.scan .grid{position:absolute;inset:0;
+  background-image:linear-gradient(color-mix(in srgb,var(--mo-red) 12%,transparent) 1px,transparent 1px),
+                   linear-gradient(90deg,color-mix(in srgb,var(--mo-red) 12%,transparent) 1px,transparent 1px);
+  background-size:34px 34px;}
+.scan .beam{position:absolute;left:0;right:0;height:3px;top:0;
+  background:linear-gradient(90deg,transparent,var(--mo-red),transparent);box-shadow:0 0 18px var(--mo-red);}
+.slide.active .scan .beam{animation:mo-scanmove 2.2s ease-in-out infinite;}
+@keyframes mo-scanmove{0%{top:4%;}50%{top:94%;}100%{top:4%;}}
+.scan .hit{position:absolute;width:12px;height:12px;border-radius:50%;background:var(--mo-red);
+  opacity:0;box-shadow:0 0 12px var(--mo-red);}
+.slide.active .scan .hit{animation:mo-hit .4s ease both;}
+.slide.active .scan .hit:nth-child(3){top:30%;left:24%;animation-delay:1.0s;}
+.slide.active .scan .hit:nth-child(4){top:62%;left:58%;animation-delay:1.5s;}
+.slide.active .scan .hit:nth-child(5){top:44%;left:78%;animation-delay:2.0s;}
+@keyframes mo-hit{from{opacity:0;transform:scale(0);}to{opacity:1;transform:scale(1);}}
+
+/* ===========================================================================
+   10. ACCESSIBILITY  — respect reduced-motion: show end states, skip movement.
+   =========================================================================== */
+@media (prefers-reduced-motion: reduce){
+  .slide.active .r,.slide.active .cap-rise,.slide.active .stagger > *,
+  .slide.active .seq-recede,.slide.active .seq-takeover,.slide.active .seq-task,
+  .slide.active .motion-cap,.slide.active .cchip,.slide.active .big-figure,
+  .slide.active .iqsvg path,.slide.active .iqdot,.slide.active .tnode{
+    animation-duration:.01ms!important;animation-delay:0s!important;}
+  .slide.active .pulsering::before,.slide.active .pulsering::after,
+  .slide.active .iqhub,.slide.active .cvorb{animation:none!important;}
+  .r,.cap-rise,.seq-recede,.seq-takeover,.motion-cap,.cchip,.big-figure,.iqdot,.tnode{opacity:1!important;}
+  .seq-task{opacity:1!important;}
+}

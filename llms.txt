@@ -1,0 +1,206 @@
+# Beautiful Decks
+
+> Agent-ready HTML presentation engine for normal 16:9 decks and panoramic 48:9 decks. Build from a CommonJS spec, run deterministic QA, render the actual artifact, visually inspect it, and only then export.
+
+## Format decision (do this first)
+
+- Use `standard` for normal presentations, PowerPoint-style widescreen, and every request that says “16:9” or “wide 16:9”. Canvas: 1280×720.
+- Use `ultrawide` only for explicit panoramic, theatre, multi-screen, three-panel, or 48:9 requests. Canvas: 3840×720 = three contiguous 1280×720 panels.
+- Never reinterpret ordinary “widescreen 16:9” as ultrawide.
+
+Machine-readable metadata:
+
+```bash
+node bin/beautiful-decks.js formats
+```
+
+## Read order
+
+1. `llms.txt` (this file)
+2. `examples/standard.js` or `examples/ultrawide.js`
+3. `docs/TEMPLATES.md`
+4. `engine/build.js` or `engine/build-wide.js` only when using an advanced template
+
+## Fastest complete path
+
+```bash
+npm install
+cp examples/standard.js my-deck.js
+# edit my-deck.js
+node bin/beautiful-decks.js build my-deck.js dist/my-deck.html
+node bin/beautiful-decks.js qa dist/my-deck.html --out dist/qa-my-deck
+node bin/beautiful-decks.js render dist/my-deck.html dist/render my --pdf dist/my-deck.pdf
+node bin/beautiful-decks.js portable dist/my-deck.html dist/my-deck-portable.html --strict
+```
+
+For ultrawide, copy `examples/ultrawide.js`; its `format: 'ultrawide'` selects the right builder, QA, renderer, and PDF behavior automatically.
+
+## Minimal standard 16:9 spec
+
+```js
+module.exports = {
+  format: 'standard',
+  title: 'Quarterly decision brief',
+  foot: 'Strategy · July 2026',
+  motion: true,
+  slides: [
+    {
+      type: 'cover',
+      img: 'building',
+      eyebrow: 'Decision brief',
+      title: 'The next constraint is <span class="grad-text">execution</span>',
+      subtitle: 'A one-sentence orientation for the audience.'
+    },
+    {
+      type: 'content',
+      kicker: 'Evidence',
+      title: 'Three facts change the decision',
+      bullets: [
+        '<b>Fact one</b> — quantified and sourced',
+        '<b>Fact two</b> — directly relevant',
+        '<b>Fact three</b> — resolves the objection'
+      ],
+      insight: 'State the implication, not just the data.'
+    },
+    {
+      type: 'closing',
+      title: 'Decide the next move',
+      steps: [
+        { k: 'Owner', v: 'Name one accountable person' },
+        { k: 'Action', v: 'Choose one bounded next step' },
+        { k: 'Clock', v: 'Set a real date' }
+      ]
+    }
+  ]
+};
+```
+
+Standard template text fields may contain trusted inline HTML such as `<b>`, `<em>`, `<br>`, and `<span class="grad-text">`. Specs are executable JavaScript; do not run untrusted specs or insert unsanitized user input.
+
+## Minimal ultrawide 48:9 spec
+
+```js
+module.exports = {
+  format: 'ultrawide',
+  title: 'Panoramic leadership story',
+  foot: 'Leadership forum · July 2026',
+  motion: true,
+  slides: [
+    {
+      type: 'wcurtain',
+      eyebrow: 'Panoramic opening',
+      title: 'Three screens. One continuous story.',
+      subtitle: 'Use the width for sequence and contrast—not more words.'
+    },
+    {
+      type: 'wspotlight',
+      kicker: 'Proof',
+      title: 'A light sweeps the evidence from left to right',
+      items: [
+        { n: '01', t: 'Context', b: 'Orient the room', icon: 'globe' },
+        { n: '02', t: 'Tension', b: 'Name the friction', icon: 'shield' },
+        { n: '03', t: 'Proof', b: 'Show the receipt', icon: 'trending' },
+        { n: '04', t: 'Decision', b: 'Commit the next move', icon: 'rocket' }
+      ]
+    }
+  ]
+};
+```
+
+Ultrawide fields are escaped as plain text by default. Do not rely on HTML markup in ultrawide text fields.
+
+## Narrative contract
+
+Before writing slides, identify:
+
+- Audience: who is in the room?
+- Decision: what should they decide, believe, or do?
+- Evidence: what facts can carry that decision?
+- Arc: context → tension → proof → decision.
+
+Then enforce:
+
+- One primary idea per slide.
+- A title that states the point, not the topic.
+- Numbers include unit, period, and source when applicable.
+- Motion must reveal sequence, causality, or emphasis; otherwise omit it.
+- Ultrawide slides use the panorama for flow. Never stretch a normal slide or fill all three panels with independent mini-slides.
+
+## Build contract
+
+- Keep `format` explicit.
+- Keep the fixed canvas sizes. Do not change 1280×720 or 3840×720.
+- Prefer the starter examples and existing templates over custom HTML.
+- Use local assets under `engine/assets/` or paths relative to the spec/output.
+- If a product logo is required, add it only with valid redistribution/trademark rights. Do not recolor or distort it.
+- If a customer logo is required, pass an approved inline SVG with `deck.customer.logoSvg`; never fabricate one.
+
+## Verification contract (mandatory)
+
+1. Build succeeds.
+2. QA exits 0.
+3. Render produces exactly one PNG per slide.
+4. PDF page count equals slide count when a PDF is requested.
+5. Strict portable export reports 0 missing and 0 remote dependencies when portability is requested.
+6. Inspect every rendered slide or a legible contact sheet for clipping, overlap, broken hierarchy, unreadable text, and incomplete motion end states.
+7. If a screenshot suggests a defect, verify DOM geometry before patching screenshot/OCR artifacts.
+
+Do not claim completion from source inspection alone. Completion means the generated artifact was exercised.
+
+## Useful commands
+
+```bash
+# Inspect environment
+node bin/beautiful-decks.js doctor
+
+# Search story/motion patterns
+node bin/beautiful-decks.js patterns find "before after"
+node bin/beautiful-decks.js patterns find security
+
+# Build
+node bin/beautiful-decks.js build spec.js dist/deck.html
+
+# QA
+node bin/beautiful-decks.js qa dist/deck.html --out dist/qa
+
+# Render + PDF
+node bin/beautiful-decks.js render dist/deck.html dist/render slide --pdf dist/deck.pdf
+
+# Strict one-file package
+node bin/beautiful-decks.js portable dist/deck.html dist/deck-portable.html --strict
+
+# Engine regression and public-release checks
+npm test
+npm run safety
+```
+
+## Standard template inventory
+
+`agenda`, `archgrid`, `big`, `cards3`, `closing`, `compare`, `content`, `cover`, `features`, `metrics`, `phases`, `placeholder`, `product`, `punch`, `quad`, `section`, `split`, `spotlight`, `statement`, `timeline`, `usecases`, `webexhibit`.
+
+Recommended first choices: `cover`, `agenda`, `content`, `split`, `cards3`, `features`, `metrics`, `timeline`, `compare`, `statement`, `closing`.
+
+## Ultrawide template inventory
+
+`wbigtri`, `wbrandcover`, `wchain`, `wconstel`, `wcover`, `wcurtain`, `wday`, `wdolly`, `wfilmstrip`, `wflap`, `wforces`, `wgutpunch`, `whorizon`, `whub`, `wiris`, `wjourney`, `wleak`, `wpersona`, `wpitchcanvas`, `wramp`, `wribbon`, `wriver`, `wroad`, `wsection`, `wshots`, `wshutter`, `wspotlight`, `wstair`, `wstatement`, `wswim`, `wtimeline`, `wtript`, `wtypewriter`, `wunfold`, `wzipper`.
+
+Recommended first choices: `wcurtain`, `wcover`, `wjourney`, `wspotlight`, `whorizon`, `wribbon`, `wtimeline`, `wstatement`, `wunfold`.
+
+## Failure handling
+
+- Missing browser: set `BROWSER_PATH` to Chrome/Chromium/Edge/Brave.
+- Unknown slide type: use the exact names above; builders intentionally fail fast.
+- Broken image: use a bundled background key (`building`, `office`, `datacenter`, `meeting`, `globe`, `advisory`, `fintech`, `analytics`, `manila`, `laptop`) or a valid local path in templates that accept direct paths.
+- QA false positive for intentional off-canvas decoration: add a narrow `data-qa-ignore="offcanvas"` only to the decorative element; never disable the rule globally.
+- Motion sampled too early: use default settle times (2400 ms standard, 3200 ms ultrawide) before diagnosing the final state.
+- Do not bypass QA just to produce an export.
+
+## Canonical references
+
+- Human overview: `README.md`
+- Template fields: `docs/TEMPLATES.md`
+- Standard starter: `examples/standard.js`
+- Ultrawide starter: `examples/ultrawide.js`
+- Presenter runtime: `engine/js/deck-engine.js`
+- Regression suite: `tests/engine-regressions.cjs`
+- Asset/license boundaries: `THIRD_PARTY_NOTICES.md`

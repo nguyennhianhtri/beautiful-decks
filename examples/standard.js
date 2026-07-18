@@ -1,0 +1,92 @@
+module.exports = {
+  format: 'standard',
+  title: 'Beautiful Decks — Standard 16:9 example',
+  foot: 'Beautiful Decks · Standard example',
+  motion: true,
+  slides: [
+    {
+      type: 'cover',
+      img: 'building',
+      eyebrow: 'Standard 16:9 · 1280×720',
+      badge: 'Agent-ready example',
+      title: 'A clear story, <span class="grad-text">beautifully paced</span>',
+      subtitle: 'Use one idea per slide, evidence before decoration, and motion only when it advances the argument.',
+      meta: [
+        { k: 'Format', v: '16:9' },
+        { k: 'Runtime', v: 'HTML + CSS + JavaScript' },
+      ],
+    },
+    {
+      type: 'agenda',
+      kicker: 'Story arc',
+      title: 'Four beats, one decision',
+      items: [
+        { n: '01', t: 'Context', d: 'why this matters now' },
+        { n: '02', t: 'Tension', d: 'what is blocking progress' },
+        { n: '03', t: 'Proof', d: 'what the evidence says', active: true },
+        { n: '04', t: 'Decision', d: 'what happens next' },
+      ],
+    },
+    {
+      type: 'split',
+      img: 'advisory',
+      wide: true,
+      kicker: 'The shift',
+      title: 'Move from activity to outcomes',
+      body: 'A strong deck makes the decision path visible. Every visual should either orient, prove, compare, or commit.',
+      bullets: [
+        '<b>Orient</b> the audience in one sentence',
+        '<b>Prove</b> the claim with a number or source',
+        '<b>Commit</b> to a next action with an owner',
+      ],
+      insight: 'If a slide does not change the audience’s understanding, remove it.',
+    },
+    {
+      type: 'cards3',
+      kicker: 'Design system',
+      title: 'Three reusable building blocks',
+      cards: [
+        { icon: 'flowchart', num: '01', title: 'Narrative', body: 'A deliberate sequence from context to decision.' },
+        { icon: 'database', num: '02', title: 'Evidence', body: 'Numbers, sources, and receipts that survive scrutiny.' },
+        { icon: 'sparkle', num: '03', title: 'Expression', body: 'A visual treatment that reinforces the message.', gold: true },
+      ],
+    },
+    {
+      type: 'metrics',
+      img: 'analytics',
+      kicker: 'Quality gate',
+      title: 'The deck should survive both a room and a renderer',
+      subtitle: 'Geometry, assets, accessibility, and exports are tested before delivery.',
+      stats: [
+        { n: '16:9', l: 'standard canvas' },
+        { n: '0', l: 'broken assets' },
+        { n: '1', l: 'clear decision' },
+        { n: '100%', l: 'local ownership' },
+      ],
+    },
+    {
+      type: 'timeline',
+      kicker: 'Delivery',
+      title: 'Build in one tight loop',
+      body: 'Start with the story, generate the deck, run deterministic QA, inspect the render, and only then export.',
+      insight: 'A green geometry report is necessary, but the final visual pass is still mandatory.',
+      items: [
+        { when: '1 · Frame', t: 'Write the argument', b: 'Audience, decision, and evidence.' },
+        { when: '2 · Build', t: 'Generate the HTML', b: 'Choose the smallest useful template set.' },
+        { when: '3 · Verify', t: 'QA and render', b: 'Fix defects before polishing.' },
+        { when: '4 · Export', t: 'Package and share', b: 'Portable HTML, PNGs, or PDF.' },
+      ],
+    },
+    {
+      type: 'closing',
+      img: 'meeting',
+      eyebrow: 'Next move',
+      title: 'Make the decision easy to see',
+      steps: [
+        { k: 'Choose', v: 'the audience and decision' },
+        { k: 'Build', v: 'the smallest complete story' },
+        { k: 'Verify', v: 'the actual rendered artifact' },
+      ],
+    },
+  ],
+};

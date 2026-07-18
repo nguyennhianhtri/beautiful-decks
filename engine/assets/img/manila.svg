@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Abstract manila background">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#111827"/><stop offset="1" stop-color="#7c2d12"/></linearGradient><linearGradient id="line" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#f59e0b" stop-opacity=".25"/><stop offset="1" stop-color="#f59e0b" stop-opacity=".75"/></linearGradient><pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#fff" stroke-opacity=".035"/></pattern></defs>
+<rect width="1280" height="720" fill="url(#g)"/><rect width="1280" height="720" fill="url(#grid)"/><circle cx="1080" cy="120" r="170" fill="#f59e0b" opacity="0.1"/><circle cx="180" cy="150" r="110" fill="#f59e0b" opacity="0.08"/><circle cx="720" cy="620" r="220" fill="#f59e0b" opacity="0.07"/>
+<path d="M0 600L190 410L340 520L550 260L760 500L980 180L1280 520V720H0Z" fill="url(#line)" stroke="#f59e0b" stroke-opacity=".45" stroke-width="3"/>
+<path d="M0 640C260 560 420 700 690 610S1030 500 1280 590" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="2"/>
+</svg>
