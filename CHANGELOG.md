@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.2 — 2026-07-18
+
+### Fixed
+
+- Require `wribbon.perRow` to be a positive integer, preventing builder hangs and attribute injection.
+- Namespace IDs and `href` references in both single- and double-quoted inline SVG.
+- Preserve documented bare and root-relative source links while continuing to reject unsafe schemes.
+- Validate only documented safe CSS color forms instead of accepting invalid names/hex lengths.
+- Require exactly two `wforces`, each with a non-empty `items` array.
+- Resolve `wshots` image slugs through the per-build asset base so galleries work from any output directory.
+- Constrain persona initials without suppressing real overlap diagnostics.
+
+### Added
+
+- Warning-fatal `--strict` QA mode for standard and ultrawide decks; canonical CI uses it.
+- Temporary-output QA inside the template-matrix regression.
+- Regression coverage increased to 24 tests, plus CLI smoke.
+
 ## 1.0.1 — 2026-07-18
 
 ### Fixed

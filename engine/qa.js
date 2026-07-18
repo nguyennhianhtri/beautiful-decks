@@ -24,11 +24,12 @@ const { pathToFileURL } = require('url');
 const { launchOptions } = require('./lib/browser');
 const args = process.argv.slice(2);
 const input = args[0];
-if (!input) { console.error('usage: node qa.js <input.html> [--out dir] [--prefix p] [--settle ms]'); process.exit(2); }
+if (!input) { console.error('usage: node qa.js <input.html> [--out dir] [--prefix p] [--settle ms] [--strict]'); process.exit(2); }
 const getFlag = (name, def) => { const i = args.indexOf('--' + name); return i >= 0 ? args[i + 1] : def; };
 const SETTLE = parseInt(getFlag('settle', '2400'), 10);
 const PREFIX = getFlag('prefix', 'qa');
 const OUT = getFlag('out', path.join(path.dirname(path.resolve(input)), 'qa-render'));
+const STRICT = args.includes('--strict') || args.includes('--fail-on-warn');
 const W = 1280, H = 720;
 const EDGE_TOL = 1.5;        // px an element may poke past the canvas edge (sub-px rounding)
 const OVERLAP_AREA = 240;    // min intersection area (px^2) to count as a real overlap
@@ -198,5 +199,5 @@ function measure(W, H, EDGE_TOL, OVERLAP_AREA, FONT_FLOOR) {
   runtimeErrors.forEach(message => console.log(`     [ERROR] RUNTIME — ${message}`));
   fs.writeFileSync(path.join(OUT, 'qa-report.json'), JSON.stringify({ input, count, errors, warns, runtimeErrors, report }, null, 2));
   console.log(`\n${errors} errors, ${warns} warnings across ${count} slides → ${path.join(OUT,'qa-report.json')}`);
-  process.exit(errors > 0 ? 1 : 0);
+  process.exit(errors > 0 || (STRICT && warns > 0) ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });

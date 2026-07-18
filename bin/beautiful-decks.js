@@ -40,7 +40,7 @@ function help() {
 
 Usage:
   beautiful-decks build <spec.js> [out.html] [--standard|--ultrawide]
-  beautiful-decks qa <deck.html> [QA flags]
+  beautiful-decks qa <deck.html> [--out dir] [--strict] [QA flags]
   beautiful-decks render <deck.html> <outDir> [prefix] [--pdf out.pdf] [render flags]
   beautiful-decks pdf <deck.html> <out.pdf> [--settle ms] [--dsf n]
   beautiful-decks portable <deck.html> <out.html> [--strict]

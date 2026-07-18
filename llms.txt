@@ -138,7 +138,7 @@ Then enforce:
 ## Verification contract (mandatory)
 
 1. Build succeeds.
-2. QA exits 0.
+2. Strict QA exits 0 with zero errors and zero warnings.
 3. Render produces exactly one PNG per slide.
 4. PDF page count equals slide count when a PDF is requested.
 5. Strict portable export reports 0 missing and 0 remote dependencies when portability is requested.
@@ -163,7 +163,7 @@ node bin/beautiful-decks.js patterns find security
 node bin/beautiful-decks.js build spec.js dist/deck.html
 
 # QA
-node bin/beautiful-decks.js qa dist/deck.html --out dist/qa
+node bin/beautiful-decks.js qa dist/deck.html --out dist/qa --strict
 
 # Render + PDF
 node bin/beautiful-decks.js render dist/deck.html dist/render slide --pdf dist/deck.pdf
@@ -193,7 +193,7 @@ Recommended first choices: `wcurtain`, `wcover`, `wjourney`, `wspotlight`, `whor
 - Missing browser: set `BROWSER_PATH` to Chrome/Chromium/Edge/Brave.
 - Unknown slide type: use the exact names above; builders intentionally fail fast.
 - Broken image: use a bundled background key (`building`, `office`, `datacenter`, `meeting`, `globe`, `advisory`, `fintech`, `analytics`, `manila`, `laptop`) or a valid local path in templates that accept direct paths.
-- QA false positive for intentional off-canvas decoration: add a narrow `data-qa-ignore="offcanvas"` only to the decorative element; never disable the rule globally.
+- QA false positive for intentional off-canvas decoration: verify the full-resolution pixels and DOM geometry first, then add a narrow `data-qa-ignore="offcanvas"` only to the decorative element; never disable the rule globally.
 - Motion sampled too early: use default settle times (2400 ms standard, 3200 ms ultrawide) before diagnosing the final state.
 - Ultrawide `theme: 'light'`: unsupported because the panoramic component set is dark-only; omit it or use the default dark theme.
 - Do not bypass QA just to produce an export.

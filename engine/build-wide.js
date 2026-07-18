@@ -343,7 +343,7 @@ W.wpersona = (s) => `
     <div class="pers" style="grid-template-columns:repeat(${s.personas.length},1fr);">
       ${s.personas.map(p => `
       <div class="pcard">
-        <div class="pc-top"><div class="pc-av" data-qa-ignore="overlap">${esc(p.initials || (p.name || '?').slice(0, 1))}</div>
+        <div class="pc-top"><div class="pc-av">${esc(String(p.initials || (p.name || '?').slice(0, 1)).slice(0, 3))}</div>
           <div><div class="pc-nm">${esc(p.name)}</div><div class="pc-rl">${esc(p.role)}</div></div></div>
         ${(p.sections || []).map(sec => `
         <div class="pc-sec ${sec.gain ? 'gain' : ''}">
@@ -583,8 +583,9 @@ W.wleak = (s) => `
 
 // ---- 26 PANORAMIC SCREENSHOT GALLERY — N product shots laid across the wall,
 //      each with a caption + IQ chips under it. EARNS the width by showing the
-//      demo as a filmstrip the eye reads L→R. Raw img paths (relative to the
-//      deck HTML) so live captures drop straight in.
+//      demo as a filmstrip the eye reads L→R. Image slugs resolve through the
+//      shared asset base; explicit relative/absolute/data/http paths are preserved.
+const wideImageSrc = (value) => /^(?:\.|\/|https?:|data:|file:)/i.test(String(value || '')) ? esc(value) : B.IMG(value);
 W.wshots = (s) => {
   const N = s.shots.length;
   return `
@@ -594,7 +595,7 @@ W.wshots = (s) => {
     <div class="wshots" style="grid-template-columns:repeat(${N},1fr);">
       ${s.shots.map((sh, i) => `
       <figure class="wshot wrise" style="--d:${(0.3 + i * 0.16).toFixed(2)}s;">
-        <div class="wsh-img"><img src="${esc(sh.img)}" alt="${esc(sh.cap || '')}"></div>
+        <div class="wsh-img"><img src="${wideImageSrc(sh.img)}" alt="${esc(sh.cap || '')}"></div>
         ${sh.cap ? `<figcaption class="wsh-cap">${esc(sh.cap)}</figcaption>` : ''}
         ${sh.chips ? `<div class="wsh-chips">${sh.chips.map(c =>
           `<span class="wsh-chip" style="--cc:${c.color || 'var(--ms-blue)'};"><b>${esc(c.k)}</b> ${esc(c.t)}</span>`).join('')}</div>` : ''}
@@ -851,7 +852,14 @@ const WIDE_REQUIRED_ARRAYS = {
   wstair: ['steps'], wriver: ['left', 'right'], wforces: ['forces'],
   whub: ['nodes'], wzipper: ['cols', 'top', 'bot'], wpitchcanvas: ['cards'],
 };
-const CSS_COLOR = /^(?:#[0-9a-f]{3,8}|[a-z]{3,20}|(?:rgb|hsl)a?\([0-9%.,+\-\s]+\))$/i;
+const WIDE_OBJECT_ARRAYS = {
+  wjourney: ['stations'], wswim: ['lanes'], wramp: ['steps'], wroad: ['phases', 'rows'],
+  wtript: ['acts'], wribbon: ['kpis'], wchain: ['inputs', 'outputs'], wbigtri: ['stats'],
+  wconstel: ['nodes'], wpersona: ['personas'], wday: ['segments'], wspotlight: ['items'],
+  wunfold: ['acts'], wshots: ['shots'], wtimeline: ['stations'], wstair: ['steps'],
+  wriver: ['left', 'right'], wforces: ['forces'], whub: ['nodes'], wpitchcanvas: ['cards'],
+};
+const CSS_COLOR = /^(?:#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})|var\(--[a-z0-9_-]+\)|transparent|currentcolor)$/i;
 const CSS_CLASS_TOKEN = /^[a-z0-9][a-z0-9_-]*$/i;
 function validateCssColor(value, field){
   if(value == null || value === '') return;
@@ -878,6 +886,17 @@ function validateWideDeck(deck) {
         throw new TypeError(`${label}.${field} must be a non-empty array`);
       }
     }
+    for (const field of WIDE_OBJECT_ARRAYS[slide.type] || []) {
+      slide[field].forEach((item, itemIndex) => {
+        if (!item || typeof item !== 'object') throw new TypeError(`${label}.${field}[${itemIndex}] must be an object`);
+      });
+    }
+    if (['wcover', 'wbrandcover'].includes(slide.type) && slide.meta != null) {
+      if (!Array.isArray(slide.meta)) throw new TypeError(`${label}.meta must be an array`);
+      slide.meta.forEach((item, itemIndex) => {
+        if (!item || typeof item !== 'object') throw new TypeError(`${label}.meta[${itemIndex}] must be an object`);
+      });
+    }
     if (['wtript', 'wbigtri', 'wunfold'].includes(slide.type) && slide[slide.type === 'wbigtri' ? 'stats' : 'acts'].length !== 3) {
       const field = slide.type === 'wbigtri' ? 'stats' : 'acts';
       throw new RangeError(`${label}.${field} must contain exactly 3 items`);
@@ -887,6 +906,18 @@ function validateWideDeck(deck) {
         if (!stat || typeof stat !== 'object') throw new TypeError(`${label}.stats[${statIndex}] must be an object`);
         validateClassToken(stat.tone, `${label}.stats[${statIndex}].tone`);
       });
+    }
+    if (slide.type === 'wpersona') {
+      slide.personas.forEach((persona, personaIndex) => {
+        if (persona.sections != null && !Array.isArray(persona.sections)) throw new TypeError(`${label}.personas[${personaIndex}].sections must be an array`);
+        (persona.sections || []).forEach((section, sectionIndex) => {
+          if (!section || typeof section !== 'object') throw new TypeError(`${label}.personas[${personaIndex}].sections[${sectionIndex}] must be an object`);
+          if (!Array.isArray(section.items)) throw new TypeError(`${label}.personas[${personaIndex}].sections[${sectionIndex}].items must be an array`);
+        });
+      });
+    }
+    if (slide.type === 'wriver' && (!slide.core || typeof slide.core !== 'object' || Array.isArray(slide.core))) {
+      throw new TypeError(`${label}.core must be an object`);
     }
     if (slide.type === 'wzipper') {
       const expected = slide.cols.length;
@@ -905,6 +936,9 @@ function validateWideDeck(deck) {
       });
     }
     if (slide.type === 'wribbon') {
+      if (slide.perRow != null && (!Number.isInteger(slide.perRow) || slide.perRow <= 0)) {
+        throw new RangeError(`${label}.perRow must be a positive integer`);
+      }
       slide.kpis.forEach((kpi, kpiIndex) => {
         if (!kpi || typeof kpi !== 'object') throw new TypeError(`${label}.kpis[${kpiIndex}] must be an object`);
         validateCssColor(kpi.color, `${label}.kpis[${kpiIndex}].color`);
@@ -920,11 +954,19 @@ function validateWideDeck(deck) {
         validateClassToken(lane.cls, `${label}.lanes[${laneIndex}].cls`);
         if (lane.steps != null && !Array.isArray(lane.steps)) throw new TypeError(`${label}.lanes[${laneIndex}].steps must be an array`);
         for (const [stepIndex, step] of (lane.steps || []).entries()) {
-          const col = step && step.col;
-          const span = step && (step.span == null ? 1 : step.span);
+          if (!step || typeof step !== 'object') throw new TypeError(`${label}.lanes[${laneIndex}].steps[${stepIndex}] must be an object`);
+          const col = step.col;
+          const span = step.span == null ? 1 : step.span;
           if (!Number.isInteger(col) || !Number.isInteger(span) || col < 1 || span < 1 || col + span - 1 > slide.cols.length) {
             throw new RangeError(`${label}.lanes[${laneIndex}].steps[${stepIndex}] must fit within the declared columns`);
           }
+        }
+      });
+    }
+    if (slide.type === 'wtimeline') {
+      slide.stations.forEach((station, stationIndex) => {
+        if (station.chips != null && !Array.isArray(station.chips)) {
+          throw new TypeError(`${label}.stations[${stationIndex}].chips must be an array`);
         }
       });
     }
@@ -932,7 +974,10 @@ function validateWideDeck(deck) {
       slide.shots.forEach((shot, shotIndex) => {
         if (!shot || typeof shot !== 'object') throw new TypeError(`${label}.shots[${shotIndex}] must be an object`);
         if (shot.chips != null && !Array.isArray(shot.chips)) throw new TypeError(`${label}.shots[${shotIndex}].chips must be an array`);
-        (shot.chips || []).forEach((chip, chipIndex) => validateCssColor(chip && chip.color, `${label}.shots[${shotIndex}].chips[${chipIndex}].color`));
+        (shot.chips || []).forEach((chip, chipIndex) => {
+          if (!chip || typeof chip !== 'object') throw new TypeError(`${label}.shots[${shotIndex}].chips[${chipIndex}] must be an object`);
+          validateCssColor(chip.color, `${label}.shots[${shotIndex}].chips[${chipIndex}].color`);
+        });
       });
     }
     if (slide.type === 'wroad') {
@@ -947,6 +992,18 @@ function validateWideDeck(deck) {
           if (!Number.isInteger(col) || !Number.isInteger(span) || col < 1 || span < 1 || col + span - 1 > slide.phases.length) {
             throw new RangeError(`${label}.rows[${rowIndex}].bars[${barIndex}] must fit within the declared phases`);
           }
+        });
+      });
+    }
+    if (slide.type === 'wforces') {
+      if (slide.forces.length !== 2) throw new RangeError(`${label}.forces must contain exactly 2 items`);
+      slide.forces.forEach((force, forceIndex) => {
+        if (!force || typeof force !== 'object') throw new TypeError(`${label}.forces[${forceIndex}] must be an object`);
+        if (!Array.isArray(force.items) || force.items.length === 0) {
+          throw new TypeError(`${label}.forces[${forceIndex}].items must be a non-empty array`);
+        }
+        force.items.forEach((item, itemIndex) => {
+          if (!item || typeof item !== 'object') throw new TypeError(`${label}.forces[${forceIndex}].items[${itemIndex}] must be an object`);
         });
       });
     }
